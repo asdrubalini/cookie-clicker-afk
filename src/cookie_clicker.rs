@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use chrono::{DateTime, Utc};
 use thirtyfour::{
     error::WebDriverError, http::reqwest_async::ReqwestDriverAsync, prelude::ElementWaitable, By,
@@ -8,7 +6,7 @@ use thirtyfour::{
 
 pub struct CookieClicker {
     driver: GenericWebDriver<ReqwestDriverAsync>,
-    started_at: DateTime<Utc>,
+    started_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug)]
@@ -24,7 +22,7 @@ const COOKIE_CLICKER_BETA_URL: &str = "https://orteil.dashnet.org/cookieclicker/
 
 impl CookieClicker {
     /// Create a new `CookieClicker` object
-    pub async fn new(initial_save: String) -> CookieClickerResult<Self> {
+    pub async fn new() -> CookieClickerResult<Self> {
         let mut caps = DesiredCapabilities::chrome();
         caps.add_chrome_arg("--window-size=1920,1080")
             .map_err(CookieClickerError::DriverError)?;
@@ -33,17 +31,25 @@ impl CookieClicker {
             .await
             .map_err(CookieClickerError::DriverError)?;
 
-        let mut cookie_clicker = Self {
+        Ok(Self {
             driver,
-            started_at: Utc::now(),
-        };
+            started_at: None,
+        })
+    }
 
-        cookie_clicker.load_beta().await?;
+    /// Start the actual cookie clicker session
+    pub async fn start(&mut self, initial_save: String) -> CookieClickerResult<()> {
+        self.load_beta().await?;
+        self.load_save_code(initial_save).await?;
+        self.load_beta().await?;
 
-        cookie_clicker.load_save_code(initial_save).await?;
-        cookie_clicker.load_beta().await?;
+        self.started_at = Some(Utc::now());
 
-        Ok(cookie_clicker)
+        Ok(())
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.started_at.is_some()
     }
 
     /// Load save code into the current game
@@ -114,14 +120,14 @@ impl CookieClicker {
     }
 
     /// Take a screenshot of the current page
-    /// TODO: complete
-    pub async fn take_screenshot(&mut self) -> CookieClickerResult<()> {
-        self.driver
-            .screenshot(&PathBuf::from("./screenshot.png"))
+    pub async fn take_screenshot(&mut self) -> CookieClickerResult<Vec<u8>> {
+        let screenshot = self
+            .driver
+            .screenshot_as_png()
             .await
             .map_err(CookieClickerError::DriverError)?;
 
-        Ok(())
+        Ok(screenshot)
     }
 
     /// Gets cookie count as beautified string

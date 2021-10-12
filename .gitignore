@@ -2,3 +2,4 @@
 chromedriver
 workspace.code-workspace
 .vscode/
+.env

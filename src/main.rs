@@ -1,23 +1,17 @@
-use std::{fs::File, io::Read, time::Duration};
+use std::env;
 
-use crate::cookie_clicker::CookieClicker;
+use dotenv::dotenv;
+use telegram_bot::Api;
 
 mod cookie_clicker;
+mod telegram;
 
 #[tokio::main]
 async fn main() {
-    let mut save_file = File::open("AsdrubaliniBakery.txt").unwrap();
-    let mut save_code = String::new();
-    save_file.read_to_string(&mut save_code).unwrap();
+    dotenv().ok();
 
-    let mut cookie = CookieClicker::new(save_code).await.unwrap();
+    let token = env::var("TELEGRAM_BOT_TOKEN").expect("Missing env TELEGRAM_BOT_TOKEN");
+    let api = Api::new(token);
 
-    println!("{} cookies", cookie.get_cookies_count().await.unwrap());
-
-    for i in 0..200000 {
-        tokio::time::sleep(Duration::from_secs(2)).await;
-        println!("{} cookies", cookie.get_cookies_count().await.unwrap());
-    }
-
-    cookie.exit().await.unwrap();
+    telegram::handle_messages(&api).await;
 }
