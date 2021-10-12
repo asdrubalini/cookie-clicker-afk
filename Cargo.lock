@@ -82,6 +82,7 @@ dependencies = [
 name = "cookie-clicker-afk"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "thirtyfour",
  "tokio",
 ]
