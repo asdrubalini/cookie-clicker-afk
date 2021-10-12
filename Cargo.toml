@@ -1,0 +1,8 @@
+[package]
+name = "cookie-clicker-afk"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+tokio = { version = "1", features = [ "full" ] }
+thirtyfour = { version = "0.27", features = [ "tokio-runtime" ] }

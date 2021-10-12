@@ -1,0 +1,8 @@
+version: "3"
+
+services:
+  chrome:
+    image: selenium/standalone-chrome:4.0.0-rc-3-20211010
+    shm_size: 2gb
+    ports:
+      - 4444:4444
