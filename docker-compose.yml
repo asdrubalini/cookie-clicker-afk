@@ -18,16 +18,11 @@ services:
             - cookie-clicker-afk
         depends_on:
             - webdriver
-        volumes:
-            - worker-storage:/app/
-        environment:
-            - TELEGRAM_BOT_TOKEN={{ TELEGRAM_BOT_TOKEN }}
-            - TELEGRAM_ADMIN_ID={{ TELEGRAM_ADMIN_ID }}
-            - DRIVER_URL={{ DRIVER_URL }}
+        # environment:
+            # - TELEGRAM_BOT_TOKEN={{ TELEGRAM_BOT_TOKEN }}
+            # - TELEGRAM_ADMIN_ID={{ TELEGRAM_ADMIN_ID }}
+            # - DRIVER_URL={{ DRIVER_URL }}
         restart: unless-stopped
 
 networks:
     cookie-clicker-afk:
-
-volumes:
-    worker-storage:
