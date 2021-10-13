@@ -24,7 +24,6 @@ services:
             - TELEGRAM_BOT_TOKEN={{ TELEGRAM_BOT_TOKEN }}
             - TELEGRAM_ADMIN_ID={{ TELEGRAM_ADMIN_ID }}
             - DRIVER_URL={{ DRIVER_URL }}
-
         restart: unless-stopped
 
 networks:
