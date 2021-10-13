@@ -19,7 +19,12 @@ services:
         environment:
             - TELEGRAM_BOT_TOKEN=
             - DRIVER_URL=http://webdriver:4444
+        volumes:
+            - worker-storage:/app/
         restart: unless-stopped
 
 networks:
     cookie-clicker-afk:
+
+volumes:
+    worker-storage:
