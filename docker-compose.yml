@@ -9,7 +9,7 @@ services:
         networks:
             - cookie-clicker-afk
         environment:
-            - SE_NODE_SESSION_TIMEOUT=-1
+            - SE_NODE_SESSION_TIMEOUT=86400
         restart: unless-stopped
     
     worker:
@@ -20,6 +20,11 @@ services:
             - webdriver
         volumes:
             - worker-storage:/app/
+        environment:
+            - TELEGRAM_BOT_TOKEN={{ TELEGRAM_BOT_TOKEN }}
+            - TELEGRAM_ADMIN_ID={{ TELEGRAM_ADMIN_ID }}
+            - DRIVER_URL={{ DRIVER_URL }}
+
         restart: unless-stopped
 
 networks:

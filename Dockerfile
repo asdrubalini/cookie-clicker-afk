@@ -18,8 +18,9 @@ FROM alpine AS runner
 RUN addgroup -S runner && adduser -S runner -G runner
 
 RUN mkdir /app && chown -R runner:runner /app
+
 WORKDIR /app
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/cookie-clicker-afk /usr/local/bin/cookie-clicker-afk
 USER runner
-COPY .env .
+
 CMD ["/usr/local/bin/cookie-clicker-afk"]

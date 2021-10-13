@@ -30,6 +30,9 @@ impl CookieClicker {
             .map_err(CookieClickerError::DriverError)?;
 
         let driver_url = env::var("DRIVER_URL").expect("Missing env DRIVER_URL");
+
+        println!("Connecting to {}", driver_url);
+
         let driver = WebDriver::new(&driver_url, &caps)
             .await
             .map_err(CookieClickerError::DriverError)?;
