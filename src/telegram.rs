@@ -17,7 +17,7 @@ pub enum MessageHandlerError {
 }
 
 pub async fn handle_text_messages(
-    api: Api,
+    api: &Api,
     chat_id: ChatId,
     cookie_clicker: ConcurrentCookieClicker,
     message_text: String,
@@ -123,7 +123,7 @@ pub async fn handle_messages(api: &Api) {
                 let cookie_clicker = cookie_clicker.clone();
 
                 tokio::spawn(async move {
-                    match handle_text_messages(api, chat_id, cookie_clicker, data).await {
+                    match handle_text_messages(&api, chat_id, cookie_clicker, data).await {
                         Ok(_) => (),
                         Err(error) => {
                             println!("Got an error while handling a message: {:?}", error);
