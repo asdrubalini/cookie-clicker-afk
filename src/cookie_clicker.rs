@@ -21,6 +21,7 @@ pub enum CookieClickerError {
 pub type CookieClickerResult<T> = Result<T, CookieClickerError>;
 
 const COOKIE_CLICKER_BETA_URL: &str = "https://orteil.dashnet.org/cookieclicker/beta/";
+const RESTART_TASK_SLEEP_TIME: u64 = 86400;
 
 impl CookieClicker {
     /// Create a new `CookieClicker` object

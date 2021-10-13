@@ -50,7 +50,7 @@ pub async fn handle_commands(command_data: CommandData) -> CommandHandlerResult 
 }
 
 async fn command_start(command_data: CommandData) -> CommandHandlerResult {
-    let mut cookie_clicker = command_data.cookie_clicker.lock().await;
+    let mut cookie_clicker_ref = command_data.cookie_clicker.lock().await;
 
     command_data
         .api
@@ -61,11 +61,17 @@ async fn command_start(command_data: CommandData) -> CommandHandlerResult {
         .await
         .map_err(MessageHandlerError::TelegramError)?;
 
+    let mut cookie_clicker = CookieClicker::new()
+        .await
+        .map_err(MessageHandlerError::CookieClicker)?;
+
     // Start game
     cookie_clicker
         .start(command_data.message)
         .await
         .map_err(MessageHandlerError::CookieClicker)?;
+
+    *cookie_clicker_ref = Some(cookie_clicker);
 
     command_data.api.send(SendMessage::new(
             command_data.chat_id,
@@ -78,7 +84,20 @@ async fn command_start(command_data: CommandData) -> CommandHandlerResult {
 }
 
 async fn command_screenshot(command_data: CommandData) -> CommandHandlerResult {
-    let mut cookie_clicker = command_data.cookie_clicker.lock().await;
+    let mut cookie_clicker_ref = command_data.cookie_clicker.lock().await;
+
+    if cookie_clicker_ref.is_none() {
+        command_data
+            .api
+            .send(SendMessage::new(
+                command_data.chat_id,
+                "The bot has not been started yet",
+            ))
+            .await
+            .map_err(MessageHandlerError::TelegramError)?;
+    }
+
+    let cookie_clicker = cookie_clicker_ref.as_mut().unwrap();
 
     command_data
         .api
@@ -107,7 +126,21 @@ async fn command_screenshot(command_data: CommandData) -> CommandHandlerResult {
 }
 
 async fn command_status(command_data: CommandData) -> CommandHandlerResult {
-    let mut cookie_clicker = command_data.cookie_clicker.lock().await;
+    let mut cookie_clicker_ref = command_data.cookie_clicker.lock().await;
+
+    if cookie_clicker_ref.is_none() {
+        command_data
+            .api
+            .send(SendMessage::new(
+                command_data.chat_id,
+                "The bot has not been started yet",
+            ))
+            .await
+            .map_err(MessageHandlerError::TelegramError)?;
+    }
+
+    let cookie_clicker = cookie_clicker_ref.as_mut().unwrap();
+
     let cookies_count = cookie_clicker
         .get_cookies_count()
         .await
@@ -126,31 +159,57 @@ async fn command_status(command_data: CommandData) -> CommandHandlerResult {
 }
 
 async fn command_stop(command_data: CommandData) -> CommandHandlerResult {
-    let mut cookie_clicker = command_data.cookie_clicker.lock().await;
+    let mut cookie_clicker_ref = command_data.cookie_clicker.lock().await;
+
+    if cookie_clicker_ref.is_none() {
+        command_data
+            .api
+            .send(SendMessage::new(
+                command_data.chat_id,
+                "The bot has not been started yet",
+            ))
+            .await
+            .map_err(MessageHandlerError::TelegramError)?;
+    }
+
+    let mut cookie_clicker = cookie_clicker_ref.take().unwrap();
+
     let save_code = cookie_clicker
         .get_save_code()
         .await
         .map_err(MessageHandlerError::CookieClicker)?;
 
-    let mut message = SendMessage::new(
+    let first_message = SendMessage::new(
         command_data.chat_id,
-        format!(
-            r#"Browser successfully stopped. Here is your code:
-                <pre>{}</pre>"#,
-            save_code
-        ),
+        format!("Browser successfully stopped. Here is your code:",),
     );
-    message.parse_mode(telegram_bot::ParseMode::Html);
+
+    let mut second_message =
+        SendMessage::new(command_data.chat_id, format!("<pre>{}</pre>", save_code));
+    second_message.parse_mode(telegram_bot::ParseMode::Html);
 
     command_data
         .api
-        .send(message)
+        .send(first_message)
         .await
         .map_err(MessageHandlerError::TelegramError)?;
 
-    *cookie_clicker = CookieClicker::new()
+    command_data
+        .api
+        .send(second_message)
+        .await
+        .map_err(MessageHandlerError::TelegramError)?;
+
+    cookie_clicker
+        .exit()
         .await
         .map_err(MessageHandlerError::CookieClicker)?;
+
+    *cookie_clicker_ref = Some(
+        CookieClicker::new()
+            .await
+            .map_err(MessageHandlerError::CookieClicker)?,
+    );
 
     Ok(())
 }

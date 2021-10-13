@@ -8,7 +8,7 @@ use crate::cookie_clicker::CookieClicker;
 
 mod commands;
 
-type ConcurrentCookieClicker = Arc<Mutex<CookieClicker>>;
+type ConcurrentCookieClicker = Arc<Mutex<Option<CookieClicker>>>;
 
 pub struct CommandData {
     api: Api,
@@ -62,11 +62,7 @@ fn is_user_admin(message: &Message) -> bool {
 }
 
 pub async fn handle_messages(api: &Api) {
-    let cookie_clicker: ConcurrentCookieClicker = Arc::new(Mutex::new(
-        CookieClicker::new()
-            .await
-            .expect("Cannot create a new CookieClicker instance"),
-    ));
+    let cookie_clicker: ConcurrentCookieClicker = Arc::new(Mutex::new(None));
 
     let mut stream = api.stream();
 
