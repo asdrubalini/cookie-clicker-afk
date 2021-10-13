@@ -8,6 +8,8 @@ services:
             - 4444:4444
         networks:
             - cookie-clicker-afk
+        environment:
+            - SE_NODE_SESSION_TIMEOUT=-1
         restart: unless-stopped
     
     worker:
