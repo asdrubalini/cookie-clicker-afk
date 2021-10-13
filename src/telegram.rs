@@ -30,6 +30,13 @@ pub async fn handle_text_messages(
             .await
             .map_err(MessageHandlerError::TelegramError)?;
 
+        api.send(SendMessage::new(
+            chat_id,
+            "Starting a new browser session...",
+        ))
+        .await
+        .map_err(MessageHandlerError::TelegramError)?;
+
         // Start game
         cookie_clicker
             .start(save_code)
@@ -119,7 +126,14 @@ pub async fn handle_messages(api: &Api) {
                     match handle_text_messages(api, chat_id, cookie_clicker, data).await {
                         Ok(_) => (),
                         Err(error) => {
-                            println!("Got an error while handling a message: {:?}", error)
+                            println!("Got an error while handling a message: {:?}", error);
+
+                            let mut message = SendMessage::new(
+                                chat_id,
+                                format!("Error: <pre>{:#?}</pre>", error),
+                            );
+                            message.parse_mode(telegram_bot::ParseMode::Html);
+                            let _ = api.send(message).await;
                         }
                     }
                 });
