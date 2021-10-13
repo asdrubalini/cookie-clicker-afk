@@ -34,8 +34,11 @@ impl CommandData {
 }
 
 pub async fn handle_messages(api: &Api) {
-    let cookie_clicker: ConcurrentCookieClicker =
-        Arc::new(Mutex::new(CookieClicker::new().await.unwrap()));
+    let cookie_clicker: ConcurrentCookieClicker = Arc::new(Mutex::new(
+        CookieClicker::new()
+            .await
+            .expect("Cannot create a new CookieClicker instance"),
+    ));
 
     let mut stream = api.stream();
 
