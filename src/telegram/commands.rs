@@ -28,6 +28,8 @@ pub async fn handle_commands(command_data: CommandData) -> CommandHandlerResult 
         ..command_data
     };
 
+    println!("Command: {} Data: {}", command, additional_data);
+
     match command {
         "/start" => command_start(command_data).await,
         "/screenshot" => command_screenshot(command_data).await,
