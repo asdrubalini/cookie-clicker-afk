@@ -72,8 +72,8 @@ pub async fn handle_messages(api: &Api) {
         let update = match update {
             Ok(update) => update,
             Err(error) => {
-                panic!("Event error: {:?}", error);
-                // continue;
+                println!("Event error: {:?}", error);
+                continue;
             }
         };
 
