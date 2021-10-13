@@ -1,3 +1,5 @@
+use std::env;
+
 use chrono::{DateTime, Utc};
 use thirtyfour::{
     error::WebDriverError, http::reqwest_async::ReqwestDriverAsync, prelude::ElementWaitable, By,
@@ -27,7 +29,8 @@ impl CookieClicker {
         caps.add_chrome_arg("--window-size=1920,1080")
             .map_err(CookieClickerError::DriverError)?;
 
-        let driver = WebDriver::new("http://localhost:4444", &caps)
+        let driver_url = env::var("DRIVER_URL").expect("Missing env DRIVER_URL");
+        let driver = WebDriver::new(&driver_url, &caps)
             .await
             .map_err(CookieClickerError::DriverError)?;
 

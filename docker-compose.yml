@@ -1,8 +1,25 @@
 version: "3"
 
 services:
-  chrome:
-    image: selenium/standalone-chrome:4.0.0-rc-3-20211010
-    shm_size: 2gb
-    ports:
-      - 4444:4444
+    webdriver:
+        image: selenium/standalone-chrome:4.0.0-rc-3-20211010
+        shm_size: 2gb
+        ports:
+            - 4444:4444
+        networks:
+            - cookie-clicker-afk
+        restart: unless-stopped
+    
+    worker:
+        build: .
+        networks:
+            - cookie-clicker-afk
+        depends_on:
+            - webdriver
+        environment:
+            - TELEGRAM_BOT_TOKEN=
+            - DRIVER_URL=http://webdriver:4444
+        restart: unless-stopped
+
+networks:
+    cookie-clicker-afk:
