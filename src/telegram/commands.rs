@@ -16,21 +16,31 @@ type CommandHandlerResult = Result<(), MessageHandlerError>;
 
 pub async fn handle_commands(command_data: CommandData) -> CommandHandlerResult {
     let message = command_data.message;
-    let (command, additional_data) = message.split_at(
-        message
-            .find(" ")
-            .ok_or(MessageHandlerError::InvalidCommand)?,
-    );
 
-    // New command data with additional_data instead of the full message
-    let command_data = CommandData {
-        message: additional_data.to_string(),
-        ..command_data
+    let (command, additional_data) = if message.contains(" ") {
+        let (command, additional_data) = message.split_at(
+            message
+                .find(" ")
+                .ok_or(MessageHandlerError::InvalidCommand)?,
+        );
+
+        (
+            command.to_string(),
+            additional_data[1..additional_data.len()].to_string(),
+        )
+    } else {
+        (message, "".to_string())
     };
 
     println!("Command: {} Data: {}", command, additional_data);
 
-    match command {
+    // New command data with additional_data instead of the full message
+    let command_data = CommandData {
+        message: additional_data,
+        ..command_data
+    };
+
+    match command.as_str() {
         "/start" => command_start(command_data).await,
         "/screenshot" => command_screenshot(command_data).await,
         "/status" => command_status(command_data).await,
@@ -69,6 +79,15 @@ async fn command_start(command_data: CommandData) -> CommandHandlerResult {
 
 async fn command_screenshot(command_data: CommandData) -> CommandHandlerResult {
     let mut cookie_clicker = command_data.cookie_clicker.lock().await;
+
+    command_data
+        .api
+        .send(SendMessage::new(
+            command_data.chat_id,
+            "Taking screenshot...",
+        ))
+        .await
+        .map_err(MessageHandlerError::TelegramError)?;
 
     let screenshot = Bytes::from(
         cookie_clicker

@@ -33,6 +33,22 @@ impl CommandData {
     }
 }
 
+async fn command_task(api: Api, command_data: CommandData, chat_id: ChatId) {
+    tokio::spawn(async move {
+        match commands::handle_commands(command_data).await {
+            Ok(_) => (),
+            Err(error) => {
+                println!("Got an error while handling a message: {:?}", error);
+
+                let mut message =
+                    SendMessage::new(chat_id, format!("Error: <pre>{:#?}</pre>", error));
+                message.parse_mode(telegram_bot::ParseMode::Html);
+                let _ = api.send(message).await;
+            }
+        }
+    });
+}
+
 pub async fn handle_messages(api: &Api) {
     let cookie_clicker: ConcurrentCookieClicker = Arc::new(Mutex::new(
         CookieClicker::new()
@@ -60,22 +76,7 @@ pub async fn handle_messages(api: &Api) {
                 let cookie_clicker = cookie_clicker.clone();
 
                 let command_data = CommandData::new(api.clone(), chat_id, cookie_clicker, data);
-
-                tokio::spawn(async move {
-                    match commands::handle_commands(command_data).await {
-                        Ok(_) => (),
-                        Err(error) => {
-                            println!("Got an error while handling a message: {:?}", error);
-
-                            let mut message = SendMessage::new(
-                                chat_id,
-                                format!("Error: <pre>{:#?}</pre>", error),
-                            );
-                            message.parse_mode(telegram_bot::ParseMode::Html);
-                            let _ = api.send(message).await;
-                        }
-                    }
-                });
+                command_task(api, command_data, chat_id).await;
             }
         }
     }

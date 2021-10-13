@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables)]
 use std::env;
 
 use dotenv::dotenv;
