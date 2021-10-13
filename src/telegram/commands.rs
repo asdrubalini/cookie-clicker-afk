@@ -44,15 +44,6 @@ async fn command_start(command_data: CommandData) -> CommandHandlerResult {
         .api
         .send(SendMessage::new(
             command_data.chat_id,
-            "Starting a new browser session",
-        ))
-        .await
-        .map_err(MessageHandlerError::TelegramError)?;
-
-    command_data
-        .api
-        .send(SendMessage::new(
-            command_data.chat_id,
             "Starting a new browser session...",
         ))
         .await
