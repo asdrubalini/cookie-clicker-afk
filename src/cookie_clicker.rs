@@ -191,6 +191,8 @@ impl CookieClicker {
     }
 
     pub async fn exit(self) -> CookieClickerResult<()> {
+        info!("Quitting...");
+
         self.driver
             .quit()
             .await
