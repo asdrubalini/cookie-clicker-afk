@@ -21,9 +21,12 @@ services:
         env_file:
             - .env
         volumes:
-            - ./backups:/app/
+            - worker-data:/app/
         restart: unless-stopped
 
 networks:
     cookie-clicker-afk:
+
+volumes:
+    worker-data:
 
