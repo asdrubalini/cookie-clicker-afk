@@ -18,10 +18,8 @@ services:
             - cookie-clicker-afk
         depends_on:
             - webdriver
-        # environment:
-            # - TELEGRAM_BOT_TOKEN={{ TELEGRAM_BOT_TOKEN }}
-            # - TELEGRAM_ADMIN_ID={{ TELEGRAM_ADMIN_ID }}
-            # - DRIVER_URL={{ DRIVER_URL }}
+        env_file:
+            - .env
         restart: unless-stopped
 
 networks:
