@@ -10,6 +10,7 @@ mod telegram;
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+    pretty_env_logger::init();
 
     let token = env::var("TELEGRAM_BOT_TOKEN").expect("Missing env TELEGRAM_BOT_TOKEN");
     let api = Api::new(token);

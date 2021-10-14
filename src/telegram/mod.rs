@@ -1,6 +1,7 @@
 use std::{env, sync::Arc, time::Duration};
 
 use futures::StreamExt;
+use log::{error, info, warn};
 use telegram_bot::{Api, ChatId, Message, MessageKind, SendMessage, UserId};
 use tokio::sync::Mutex;
 
@@ -38,7 +39,7 @@ async fn command_task(api: Api, command_data: CommandData, chat_id: ChatId) {
         match commands::handle_commands(command_data).await {
             Ok(_) => (),
             Err(error) => {
-                println!("Got an error while handling a message: {:?}", error);
+                error!("Got an error while handling a message: {:?}", error);
 
                 let mut message =
                     SendMessage::new(chat_id, format!("Error: <pre>{:#?}</pre>", error));
@@ -70,14 +71,14 @@ async fn backup_save_code_task(cookie_clicker: ConcurrentCookieClicker) {
             let mut cookie_clicker_ref = cookie_clicker.lock().await;
 
             if cookie_clicker_ref.is_none() {
-                println!("CookieClicker instance is None, not saving yet");
+                info!("CookieClicker instance is None, not saving yet");
                 continue;
             }
 
             let cookie_clicker = cookie_clicker_ref.as_mut().unwrap();
             match cookie_clicker.backup_save_code().await {
-                Ok(_) => println!("Back up"),
-                Err(error) => println!("There was an error while backing up: {:?}", error),
+                Ok(_) => info!("Back up done"),
+                Err(error) => error!("There was an error while backing up: {:?}", error),
             }
         }
     }
@@ -93,20 +94,20 @@ pub async fn handle_messages(api: &Api) {
 
     let mut stream = api.stream();
 
-    println!("Handling messages...");
+    info!("Handling messages...");
 
     while let Some(update) = stream.next().await {
         let update = match update {
             Ok(update) => update,
             Err(error) => {
-                println!("Event error: {:?}", error);
+                error!("Event error: {:?}", error);
                 continue;
             }
         };
 
         if let telegram_bot::UpdateKind::Message(message) = update.kind {
             if !is_user_admin(&message) {
-                println!("Some user tried to access the bot");
+                warn!("Some user tried to access the bot");
                 continue;
             }
 

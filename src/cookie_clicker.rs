@@ -1,6 +1,7 @@
 use std::env;
 
 use chrono::{DateTime, Utc};
+use log::info;
 use serde::{Deserialize, Serialize};
 use thirtyfour::{
     error::WebDriverError, http::reqwest_async::ReqwestDriverAsync, prelude::ElementWaitable, By,
@@ -51,7 +52,7 @@ impl CookieClicker {
 
         let driver_url = env::var("DRIVER_URL").expect("Missing env DRIVER_URL");
 
-        println!("Connecting to {}", driver_url);
+        info!("Connecting to {}", driver_url);
 
         let driver = WebDriver::new(&driver_url, &caps)
             .await

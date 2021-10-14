@@ -1,4 +1,5 @@
 use bytes::Bytes;
+use log::info;
 use telegram_bot::{InputFileUpload, SendMessage, SendPhoto};
 
 use crate::cookie_clicker::{CookieClicker, CookieClickerError};
@@ -32,7 +33,7 @@ pub async fn handle_commands(command_data: CommandData) -> CommandHandlerResult 
         (message, "".to_string())
     };
 
-    println!("Command: {} Data: {}", command, additional_data);
+    info!("Command: {} Data: {}", command, additional_data);
 
     // New command data with additional_data instead of the full message
     let command_data = CommandData {
