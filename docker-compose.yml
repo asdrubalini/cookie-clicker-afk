@@ -20,7 +20,12 @@ services:
             - webdriver
         env_file:
             - .env
+        volumes:
+            - worker-data:/app/
         restart: unless-stopped
 
 networks:
     cookie-clicker-afk:
+
+volumes:
+    worker-data:

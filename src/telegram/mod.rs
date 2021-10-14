@@ -1,4 +1,4 @@
-use std::{env, sync::Arc};
+use std::{env, sync::Arc, time::Duration};
 
 use futures::StreamExt;
 use telegram_bot::{Api, ChatId, Message, MessageKind, SendMessage, UserId};
@@ -61,8 +61,34 @@ fn is_user_admin(message: &Message) -> bool {
     message.from.id == admin_id
 }
 
+/// Perform save code backup once in a while
+async fn backup_save_code_task(cookie_clicker: ConcurrentCookieClicker) {
+    loop {
+        tokio::time::sleep(Duration::from_secs(30 * 60)).await;
+
+        {
+            let mut cookie_clicker_ref = cookie_clicker.lock().await;
+
+            if cookie_clicker_ref.is_none() {
+                continue;
+            }
+
+            let cookie_clicker = cookie_clicker_ref.as_mut().unwrap();
+            match cookie_clicker.backup_save_code().await {
+                Ok(_) => println!("Back up"),
+                Err(error) => println!("There was an error while backing up: {:?}", error),
+            }
+        }
+    }
+}
+
 pub async fn handle_messages(api: &Api) {
     let cookie_clicker: ConcurrentCookieClicker = Arc::new(Mutex::new(None));
+
+    {
+        let cookie_clicker = cookie_clicker.clone();
+        tokio::spawn(async move { backup_save_code_task(cookie_clicker).await });
+    }
 
     let mut stream = api.stream();
 

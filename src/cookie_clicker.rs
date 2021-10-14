@@ -1,14 +1,34 @@
 use std::env;
 
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use thirtyfour::{
     error::WebDriverError, http::reqwest_async::ReqwestDriverAsync, prelude::ElementWaitable, By,
     DesiredCapabilities, GenericWebDriver, WebDriver, WebDriverCommands,
 };
+use tokio::{
+    fs::{File, OpenOptions},
+    io::AsyncWriteExt,
+};
+
+#[derive(Serialize, Deserialize)]
+struct CookieClickerBackup {
+    saved_at: DateTime<Utc>,
+    save_code: String,
+}
+
+impl CookieClickerBackup {
+    pub fn new(save_code: String) -> Self {
+        Self {
+            saved_at: Utc::now(),
+            save_code,
+        }
+    }
+}
 
 pub struct CookieClicker {
     driver: GenericWebDriver<ReqwestDriverAsync>,
-    started_at: Option<DateTime<Utc>>,
+    backups: Vec<CookieClickerBackup>,
 }
 
 #[derive(Debug)]
@@ -16,6 +36,8 @@ pub enum CookieClickerError {
     DriverError(WebDriverError),
     SaveCodeNotFound,
     CookieCountNotFound,
+    IoError(tokio::io::Error),
+    SerdeError(serde_json::Error),
 }
 
 pub type CookieClickerResult<T> = Result<T, CookieClickerError>;
@@ -40,7 +62,7 @@ impl CookieClicker {
 
         Ok(Self {
             driver,
-            started_at: None,
+            backups: Vec::new(),
         })
     }
 
@@ -50,13 +72,31 @@ impl CookieClicker {
         self.load_save_code(initial_save).await?;
         self.load_beta().await?;
 
-        self.started_at = Some(Utc::now());
-
         Ok(())
     }
 
-    pub fn is_active(&self) -> bool {
-        self.started_at.is_some()
+    /// Retrieve backup code and save on disk for later use
+    pub async fn backup_save_code(&mut self) -> CookieClickerResult<()> {
+        let backup = CookieClickerBackup::new(self.get_save_code().await?);
+        self.backups.push(backup);
+
+        let data_path = env::var("PERSISTENT_DATA_PATH").expect("Missing env PERSISTENT_DATA_PATH");
+
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(data_path)
+            .await
+            .map_err(CookieClickerError::IoError)?;
+
+        let backups_json =
+            serde_json::to_string(&self.backups).map_err(CookieClickerError::SerdeError)?;
+
+        file.write_all(backups_json.as_bytes())
+            .await
+            .map_err(CookieClickerError::IoError)?;
+
+        Ok(())
     }
 
     /// Load save code into the current game
