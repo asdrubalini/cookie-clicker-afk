@@ -1,52 +1,22 @@
-use std::env;
+use std::{env, num::ParseIntError};
 
-use chrono::{DateTime, Utc};
 use log::info;
-use serde::{Deserialize, Serialize};
 use thirtyfour::{
     error::WebDriverError, http::reqwest_async::ReqwestDriverAsync, prelude::ElementWaitable, By,
     DesiredCapabilities, GenericWebDriver, WebDriver, WebDriverCommands,
 };
-use tokio::{fs::OpenOptions, io::AsyncWriteExt};
 
-#[derive(Serialize, Deserialize)]
-struct CookieClickerBackup {
-    saved_at: DateTime<Utc>,
-    save_code: String,
-}
+mod tasks;
+pub use tasks::{ConcurrentCookieClicker, CookieClickerTasks};
 
-impl CookieClickerBackup {
-    pub fn new(save_code: String) -> Self {
-        Self {
-            saved_at: Utc::now(),
-            save_code,
-        }
-    }
+mod backup;
+pub use backup::CookieClickerBackup;
 
-    pub async fn write(self) -> CookieClickerResult<()> {
-        let data_path = env::var("PERSISTENT_DATA_PATH").expect("Missing env PERSISTENT_DATA_PATH");
+type Driver = GenericWebDriver<ReqwestDriverAsync>;
 
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .append(true)
-            .open(data_path)
-            .await
-            .map_err(CookieClickerError::IoError)?;
-
-        let backups_json =
-            serde_json::to_string(&self).map_err(CookieClickerError::SerdeError)? + "\n";
-
-        file.write_all(backups_json.as_bytes())
-            .await
-            .map_err(CookieClickerError::IoError)?;
-
-        Ok(())
-    }
-}
-
+#[derive(Debug)]
 pub struct CookieClicker {
-    driver: GenericWebDriver<ReqwestDriverAsync>,
+    driver: Option<Driver>,
 }
 
 #[derive(Debug)]
@@ -56,16 +26,32 @@ pub enum CookieClickerError {
     CookieCountNotFound,
     IoError(tokio::io::Error),
     SerdeError(serde_json::Error),
+    ParseInt(ParseIntError),
+    DriverNotStarted,
 }
 
 pub type CookieClickerResult<T> = Result<T, CookieClickerError>;
 
 const COOKIE_CLICKER_BETA_URL: &str = "https://orteil.dashnet.org/cookieclicker/beta/";
-const RESTART_TASK_SLEEP_TIME: u64 = 86400;
 
 impl CookieClicker {
     /// Create a new `CookieClicker` object
-    pub async fn new() -> CookieClickerResult<Self> {
+    pub fn new() -> Self {
+        Self { driver: None }
+    }
+
+    /// Start the actual cookie clicker session
+    pub async fn start(&mut self, initial_save: String) -> CookieClickerResult<()> {
+        self.connect().await?;
+        self.load_beta().await?;
+        self.load_save_code(initial_save).await?;
+        self.load_beta().await?;
+
+        Ok(())
+    }
+
+    /// Connect to Selenium instance
+    async fn connect(&mut self) -> CookieClickerResult<()> {
         let mut caps = DesiredCapabilities::chrome();
         caps.add_chrome_arg("--window-size=1920,1080")
             .map_err(CookieClickerError::DriverError)?;
@@ -78,16 +64,24 @@ impl CookieClicker {
             .await
             .map_err(CookieClickerError::DriverError)?;
 
-        Ok(Self { driver })
-    }
+        info!("Connected");
 
-    /// Start the actual cookie clicker session
-    pub async fn start(&mut self, initial_save: String) -> CookieClickerResult<()> {
-        self.load_beta().await?;
-        self.load_save_code(initial_save).await?;
-        self.load_beta().await?;
+        self.driver = Some(driver);
 
         Ok(())
+    }
+
+    /// Get driver instance or fail if it is not initialized
+    pub fn driver(&self) -> CookieClickerResult<&Driver> {
+        if self.driver.is_none() {
+            Err(CookieClickerError::DriverNotStarted)
+        } else {
+            Ok(self.driver.as_ref().unwrap())
+        }
+    }
+
+    pub fn is_started(&self) -> bool {
+        self.driver.is_some()
     }
 
     /// Retrieve backup code and save on disk for later use
@@ -100,6 +94,8 @@ impl CookieClicker {
 
     /// Load save code into the current game
     async fn load_save_code(&mut self, initial_save: String) -> CookieClickerResult<()> {
+        let driver = self.driver()?;
+
         let save_script = format!(
             r#"
             while (typeof Game.localStorageSet !== "function");
@@ -108,17 +104,22 @@ impl CookieClicker {
             initial_save
         );
 
-        self.driver
+        info!("Loading save code...");
+
+        driver
             .execute_script(&save_script)
             .await
             .map_err(CookieClickerError::DriverError)?;
+
+        info!("Save code loaded");
 
         Ok(())
     }
 
     pub async fn get_save_code(&mut self) -> CookieClickerResult<String> {
-        let save_code = self
-            .driver
+        let driver = self.driver()?;
+
+        let save_code = driver
             .execute_script("return Game.localStorageGet(Game.SaveTo);")
             .await
             .map_err(CookieClickerError::DriverError)?
@@ -132,8 +133,9 @@ impl CookieClicker {
 
     /// Wait until page is loaded and the big cookie has appeared on the screen
     async fn wait_page_load(&mut self) -> CookieClickerResult<()> {
-        while !self
-            .driver
+        let driver = self.driver()?;
+
+        while !driver
             .execute_script("return document.readyState")
             .await
             .map_err(CookieClickerError::DriverError)?
@@ -142,8 +144,7 @@ impl CookieClicker {
             .contains("complete")
         {}
 
-        let big_cookie = self
-            .driver
+        let big_cookie = driver
             .find_element(By::Id("bigCookie"))
             .await
             .map_err(CookieClickerError::DriverError)?;
@@ -155,20 +156,27 @@ impl CookieClicker {
 
     /// Navigate to the beta page of the game
     async fn load_beta(&mut self) -> CookieClickerResult<()> {
-        self.driver
+        let driver = self.driver()?;
+
+        info!("Loading beta...");
+
+        driver
             .get(COOKIE_CLICKER_BETA_URL)
             .await
             .map_err(CookieClickerError::DriverError)?;
 
         self.wait_page_load().await?;
 
+        info!("Loaded");
+
         Ok(())
     }
 
     /// Take a screenshot of the current page
     pub async fn take_screenshot(&mut self) -> CookieClickerResult<Vec<u8>> {
-        let screenshot = self
-            .driver
+        let driver = self.driver()?;
+
+        let screenshot = driver
             .screenshot_as_png()
             .await
             .map_err(CookieClickerError::DriverError)?;
@@ -176,11 +184,49 @@ impl CookieClicker {
         Ok(screenshot)
     }
 
-    /// Gets cookie count as beautified string
-    pub async fn get_cookies_count(&mut self) -> CookieClickerResult<String> {
-        let cookies_count = self
-            .driver
-            .execute_script("return Beautify(Game.cookies)")
+    /// Gets cookie count
+    pub async fn get_cookies_count(&mut self) -> CookieClickerResult<u128> {
+        let driver = self.driver()?;
+
+        let cookies_count = driver
+            .execute_script("return Game.cookies")
+            .await
+            .map_err(CookieClickerError::DriverError)?
+            .value()
+            .as_str()
+            .ok_or(CookieClickerError::CookieCountNotFound)?
+            .to_string();
+
+        Ok(cookies_count
+            .parse::<u128>()
+            .map_err(CookieClickerError::ParseInt)?)
+    }
+
+    /// Gets cookies per second
+    pub async fn get_cookies_per_second(&mut self) -> CookieClickerResult<u128> {
+        let driver = self.driver()?;
+
+        let cookies_count = driver
+            .execute_script("return Game.unbuffedCps")
+            .await
+            .map_err(CookieClickerError::DriverError)?
+            .value()
+            .as_str()
+            .ok_or(CookieClickerError::CookieCountNotFound)?
+            .to_string();
+
+        Ok(cookies_count
+            .parse::<u128>()
+            .map_err(CookieClickerError::ParseInt)?)
+    }
+
+    /// Get the beautified cookies count
+    pub async fn beautify_cookies(&mut self, cookies: u128) -> CookieClickerResult<String> {
+        let driver = self.driver()?;
+        let script = format!("return Beautify({})", cookies);
+
+        let cookies_count = driver
+            .execute_script(&script)
             .await
             .map_err(CookieClickerError::DriverError)?
             .value()
@@ -191,10 +237,15 @@ impl CookieClicker {
         Ok(cookies_count)
     }
 
-    pub async fn exit(self) -> CookieClickerResult<()> {
+    pub async fn exit(&mut self) -> CookieClickerResult<()> {
+        let driver = self
+            .driver
+            .take()
+            .ok_or(CookieClickerError::DriverNotStarted)?;
+
         info!("Quitting...");
 
-        self.driver
+        driver
             .quit()
             .await
             .map_err(CookieClickerError::DriverError)?;

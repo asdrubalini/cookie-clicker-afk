@@ -1,15 +1,13 @@
-use std::{env, sync::Arc, time::Duration};
+use std::{env, sync::Arc};
 
 use futures::StreamExt;
 use log::{error, info, warn};
 use telegram_bot::{Api, ChatId, Message, MessageKind, SendMessage, UserId};
 use tokio::sync::Mutex;
 
-use crate::cookie_clicker::CookieClicker;
+use crate::cookie_clicker::{ConcurrentCookieClicker, CookieClicker, CookieClickerTasks};
 
 mod commands;
-
-type ConcurrentCookieClicker = Arc<Mutex<Option<CookieClicker>>>;
 
 pub struct CommandData {
     api: Api,
@@ -39,7 +37,7 @@ async fn command_task(api: Api, command_data: CommandData, chat_id: ChatId) {
         match commands::handle_commands(command_data).await {
             Ok(_) => (),
             Err(error) => {
-                error!("Got an error while handling a message: {:?}", error);
+                error!("Error: {:?}", error);
 
                 let mut message =
                     SendMessage::new(chat_id, format!("Error: <pre>{:#?}</pre>", error));
@@ -62,34 +60,14 @@ fn is_user_admin(message: &Message) -> bool {
     message.from.id == admin_id
 }
 
-/// Perform save code backup once in a while
-async fn backup_save_code_task(cookie_clicker: ConcurrentCookieClicker) {
-    loop {
-        tokio::time::sleep(Duration::from_secs(5 * 60)).await;
-
-        {
-            let mut cookie_clicker_ref = cookie_clicker.lock().await;
-
-            if cookie_clicker_ref.is_none() {
-                info!("CookieClicker instance is None, not saving yet");
-                continue;
-            }
-
-            let cookie_clicker = cookie_clicker_ref.as_mut().unwrap();
-            match cookie_clicker.backup_save_code().await {
-                Ok(_) => info!("Back up done"),
-                Err(error) => error!("There was an error while backing up: {:?}", error),
-            }
-        }
-    }
-}
-
-pub async fn handle_messages(api: &Api) {
-    let cookie_clicker: ConcurrentCookieClicker = Arc::new(Mutex::new(None));
+/// Main event handler loop
+pub async fn handle_events(api: &Api) {
+    let cookie_clicker: ConcurrentCookieClicker = Arc::new(Mutex::new(CookieClicker::new()));
 
     {
+        // Start async jobs
         let cookie_clicker = cookie_clicker.clone();
-        tokio::spawn(async move { backup_save_code_task(cookie_clicker).await });
+        CookieClickerTasks::new(cookie_clicker).start().await;
     }
 
     let mut stream = api.stream();
