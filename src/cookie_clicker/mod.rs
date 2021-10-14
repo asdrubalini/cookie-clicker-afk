@@ -1,4 +1,4 @@
-use std::{env, num::ParseIntError};
+use std::{env, num::ParseFloatError};
 
 use log::info;
 use thirtyfour::{
@@ -26,7 +26,7 @@ pub enum CookieClickerError {
     CookieCountNotFound,
     IoError(tokio::io::Error),
     SerdeError(serde_json::Error),
-    ParseInt(ParseIntError),
+    ParseFloat(ParseFloatError),
     DriverNotStarted,
 }
 
@@ -185,7 +185,7 @@ impl CookieClicker {
     }
 
     /// Gets cookie count
-    pub async fn get_cookies_count(&mut self) -> CookieClickerResult<u128> {
+    pub async fn get_cookies_count(&mut self) -> CookieClickerResult<f64> {
         let driver = self.driver()?;
 
         let cookies_count = driver
@@ -197,13 +197,15 @@ impl CookieClicker {
             .ok_or(CookieClickerError::CookieCountNotFound)?
             .to_string();
 
+        info!("Got cookies count");
+
         Ok(cookies_count
-            .parse::<u128>()
-            .map_err(CookieClickerError::ParseInt)?)
+            .parse::<f64>()
+            .map_err(CookieClickerError::ParseFloat)?)
     }
 
     /// Gets cookies per second
-    pub async fn get_cookies_per_second(&mut self) -> CookieClickerResult<u128> {
+    pub async fn get_cookies_per_second(&mut self) -> CookieClickerResult<f64> {
         let driver = self.driver()?;
 
         let cookies_count = driver
@@ -215,13 +217,15 @@ impl CookieClicker {
             .ok_or(CookieClickerError::CookieCountNotFound)?
             .to_string();
 
+        info!("Got cookies per second");
+
         Ok(cookies_count
-            .parse::<u128>()
-            .map_err(CookieClickerError::ParseInt)?)
+            .parse::<f64>()
+            .map_err(CookieClickerError::ParseFloat)?)
     }
 
     /// Get the beautified cookies count
-    pub async fn beautify_cookies(&mut self, cookies: u128) -> CookieClickerResult<String> {
+    pub async fn beautify_cookies(&mut self, cookies: f64) -> CookieClickerResult<String> {
         let driver = self.driver()?;
         let script = format!("return Beautify({})", cookies);
 
@@ -233,6 +237,8 @@ impl CookieClicker {
             .as_str()
             .ok_or(CookieClickerError::CookieCountNotFound)?
             .to_string();
+
+        info!("Beautified");
 
         Ok(cookies_count)
     }

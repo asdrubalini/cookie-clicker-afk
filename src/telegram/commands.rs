@@ -133,8 +133,8 @@ async fn command_status(command_data: CommandData) -> CommandHandlerResult {
         .get_cookies_per_second()
         .await
         .map_err(MessageHandlerError::CookieClicker)?
-        * 60
-        * 60;
+        * 60.0
+        * 60.0;
 
     let cookies_per_hour_beautified = cookie_clicker
         .beautify_cookies(cookies_per_hour)
