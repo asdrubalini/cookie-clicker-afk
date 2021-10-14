@@ -6,10 +6,7 @@ use thirtyfour::{
     error::WebDriverError, http::reqwest_async::ReqwestDriverAsync, prelude::ElementWaitable, By,
     DesiredCapabilities, GenericWebDriver, WebDriver, WebDriverCommands,
 };
-use tokio::{
-    fs::{File, OpenOptions},
-    io::AsyncWriteExt,
-};
+use tokio::{fs::OpenOptions, io::AsyncWriteExt};
 
 #[derive(Serialize, Deserialize)]
 struct CookieClickerBackup {

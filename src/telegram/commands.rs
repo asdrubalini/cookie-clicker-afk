@@ -17,10 +17,10 @@ type CommandHandlerResult = Result<(), MessageHandlerError>;
 pub async fn handle_commands(command_data: CommandData) -> CommandHandlerResult {
     let message = command_data.message;
 
-    let (command, additional_data) = if message.contains(" ") {
+    let (command, additional_data) = if message.contains(' ') {
         let (command, additional_data) = message.split_at(
             message
-                .find(" ")
+                .find(' ')
                 .ok_or(MessageHandlerError::InvalidCommand)?,
         );
 
@@ -181,7 +181,7 @@ async fn command_stop(command_data: CommandData) -> CommandHandlerResult {
 
     let first_message = SendMessage::new(
         command_data.chat_id,
-        format!("Browser successfully stopped. Here is your code:",),
+        "Browser successfully stopped. Here is your code:",
     );
 
     let mut second_message =
