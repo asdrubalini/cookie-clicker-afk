@@ -193,15 +193,10 @@ impl CookieClicker {
             .await
             .map_err(CookieClickerError::DriverError)?
             .value()
-            .as_str()
-            .ok_or(CookieClickerError::CookieCountNotFound)?
-            .to_string();
+            .as_f64()
+            .ok_or(CookieClickerError::CookieCountNotFound)?;
 
-        info!("Got cookies count");
-
-        Ok(cookies_count
-            .parse::<f64>()
-            .map_err(CookieClickerError::ParseFloat)?)
+        Ok(cookies_count)
     }
 
     /// Gets cookies per second
@@ -213,15 +208,12 @@ impl CookieClicker {
             .await
             .map_err(CookieClickerError::DriverError)?
             .value()
-            .as_str()
-            .ok_or(CookieClickerError::CookieCountNotFound)?
-            .to_string();
+            .as_f64()
+            .ok_or(CookieClickerError::CookieCountNotFound)?;
 
         info!("Got cookies per second");
 
-        Ok(cookies_count
-            .parse::<f64>()
-            .map_err(CookieClickerError::ParseFloat)?)
+        Ok(cookies_count)
     }
 
     /// Get the beautified cookies count
