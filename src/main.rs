@@ -15,5 +15,5 @@ async fn main() {
     let token = env::var("TELEGRAM_BOT_TOKEN").expect("Missing env TELEGRAM_BOT_TOKEN");
     let api = Api::new(token);
 
-    telegram::handle_messages(&api).await;
+    telegram::handle_events(&api).await;
 }
