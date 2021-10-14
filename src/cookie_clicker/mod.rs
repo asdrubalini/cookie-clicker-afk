@@ -211,8 +211,6 @@ impl CookieClicker {
             .as_f64()
             .ok_or(CookieClickerError::CookieCountNotFound)?;
 
-        info!("Got cookies per second");
-
         Ok(cookies_count)
     }
 
@@ -229,8 +227,6 @@ impl CookieClicker {
             .as_str()
             .ok_or(CookieClickerError::CookieCountNotFound)?
             .to_string();
-
-        info!("Beautified");
 
         Ok(cookies_count)
     }
