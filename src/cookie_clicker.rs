@@ -22,11 +22,31 @@ impl CookieClickerBackup {
             save_code,
         }
     }
+
+    pub async fn write(self) -> CookieClickerResult<()> {
+        let data_path = env::var("PERSISTENT_DATA_PATH").expect("Missing env PERSISTENT_DATA_PATH");
+
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .append(true)
+            .open(data_path)
+            .await
+            .map_err(CookieClickerError::IoError)?;
+
+        let backups_json =
+            serde_json::to_string(&self).map_err(CookieClickerError::SerdeError)? + "\n";
+
+        file.write_all(backups_json.as_bytes())
+            .await
+            .map_err(CookieClickerError::IoError)?;
+
+        Ok(())
+    }
 }
 
 pub struct CookieClicker {
     driver: GenericWebDriver<ReqwestDriverAsync>,
-    backups: Vec<CookieClickerBackup>,
 }
 
 #[derive(Debug)]
@@ -58,10 +78,7 @@ impl CookieClicker {
             .await
             .map_err(CookieClickerError::DriverError)?;
 
-        Ok(Self {
-            driver,
-            backups: Vec::new(),
-        })
+        Ok(Self { driver })
     }
 
     /// Start the actual cookie clicker session
@@ -76,23 +93,7 @@ impl CookieClicker {
     /// Retrieve backup code and save on disk for later use
     pub async fn backup_save_code(&mut self) -> CookieClickerResult<()> {
         let backup = CookieClickerBackup::new(self.get_save_code().await?);
-        self.backups.push(backup);
-
-        let data_path = env::var("PERSISTENT_DATA_PATH").expect("Missing env PERSISTENT_DATA_PATH");
-
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(data_path)
-            .await
-            .map_err(CookieClickerError::IoError)?;
-
-        let backups_json =
-            serde_json::to_string(&self.backups).map_err(CookieClickerError::SerdeError)?;
-
-        file.write_all(backups_json.as_bytes())
-            .await
-            .map_err(CookieClickerError::IoError)?;
+        backup.write().await?;
 
         Ok(())
     }
