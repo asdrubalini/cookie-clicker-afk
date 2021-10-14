@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, num::ParseIntError};
 
 use chrono::{DateTime, Utc};
 use log::info;
@@ -56,6 +56,7 @@ pub enum CookieClickerError {
     CookieCountNotFound,
     IoError(tokio::io::Error),
     SerdeError(serde_json::Error),
+    ParseInt(ParseIntError),
 }
 
 pub type CookieClickerResult<T> = Result<T, CookieClickerError>;
@@ -177,7 +178,7 @@ impl CookieClicker {
     }
 
     /// Gets cookie count as beautified string
-    pub async fn get_cookies_count(&mut self) -> CookieClickerResult<String> {
+    pub async fn get_pretty_cookies_count(&mut self) -> CookieClickerResult<String> {
         let cookies_count = self
             .driver
             .execute_script("return Beautify(Game.cookies)")
@@ -189,6 +190,23 @@ impl CookieClicker {
             .to_string();
 
         Ok(cookies_count)
+    }
+
+    /// Gets cookie count
+    pub async fn get_cookies_count(&mut self) -> CookieClickerResult<u128> {
+        let cookies_count = self
+            .driver
+            .execute_script("return Game.cookies")
+            .await
+            .map_err(CookieClickerError::DriverError)?
+            .value()
+            .as_str()
+            .ok_or(CookieClickerError::CookieCountNotFound)?
+            .to_string();
+
+        Ok(cookies_count
+            .parse::<u128>()
+            .map_err(CookieClickerError::ParseInt)?)
     }
 
     pub async fn exit(self) -> CookieClickerResult<()> {

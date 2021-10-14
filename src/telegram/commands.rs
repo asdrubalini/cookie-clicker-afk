@@ -143,7 +143,7 @@ async fn command_status(command_data: CommandData) -> CommandHandlerResult {
     let cookie_clicker = cookie_clicker_ref.as_mut().unwrap();
 
     let cookies_count = cookie_clicker
-        .get_cookies_count()
+        .get_pretty_cookies_count()
         .await
         .map_err(MessageHandlerError::CookieClicker)?;
 
