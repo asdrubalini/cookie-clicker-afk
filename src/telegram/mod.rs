@@ -64,12 +64,13 @@ fn is_user_admin(message: &Message) -> bool {
 /// Perform save code backup once in a while
 async fn backup_save_code_task(cookie_clicker: ConcurrentCookieClicker) {
     loop {
-        tokio::time::sleep(Duration::from_secs(30 * 60)).await;
+        tokio::time::sleep(Duration::from_secs(5 * 60)).await;
 
         {
             let mut cookie_clicker_ref = cookie_clicker.lock().await;
 
             if cookie_clicker_ref.is_none() {
+                println!("CookieClicker instance is None, not saving yet");
                 continue;
             }
 
