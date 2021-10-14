@@ -206,11 +206,5 @@ async fn command_stop(command_data: CommandData) -> CommandHandlerResult {
         .await
         .map_err(MessageHandlerError::CookieClicker)?;
 
-    *cookie_clicker_ref = Some(
-        CookieClicker::new()
-            .await
-            .map_err(MessageHandlerError::CookieClicker)?,
-    );
-
     Ok(())
 }
