@@ -1,4 +1,4 @@
-use std::{env, path::Path};
+use std::{collections::VecDeque, env, path::Path};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -7,9 +7,15 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
-use super::{CookieClickerError, CookieClickerResult};
-
 const MAX_BACKUPS_LENGTH: usize = 512;
+
+#[derive(Debug)]
+pub enum BackupError {
+    IoError(tokio::io::Error),
+    SerdeError(serde_json::Error),
+}
+
+pub type BackupResult<T> = Result<T, BackupError>;
 
 #[derive(Serialize, Deserialize)]
 pub struct Backup {
@@ -28,17 +34,17 @@ impl Backup {
 }
 
 pub struct Backups {
-    backups: Vec<Backup>,
+    backups: VecDeque<Backup>,
 }
 
 impl Backups {
     /// Load backups from disk
-    pub async fn from_disk() -> CookieClickerResult<Self> {
+    pub async fn from_disk() -> BackupResult<Self> {
         let data_path = env::var("PERSISTENT_DATA_PATH").expect("Missing env PERSISTENT_DATA_PATH");
 
         if !Path::new(&data_path).exists() {
             return Ok(Self {
-                backups: Vec::new(),
+                backups: VecDeque::with_capacity(MAX_BACKUPS_LENGTH),
             });
         }
 
@@ -48,15 +54,15 @@ impl Backups {
             .create(false)
             .open(data_path)
             .await
-            .map_err(CookieClickerError::IoError)?;
+            .map_err(BackupError::IoError)?;
 
         let mut backups_str = String::new();
         file.read_to_string(&mut backups_str)
             .await
-            .map_err(CookieClickerError::IoError)?;
+            .map_err(BackupError::IoError)?;
 
-        let backups: Vec<Backup> =
-            serde_json::from_str(&backups_str).map_err(CookieClickerError::SerdeError)?;
+        let backups: VecDeque<Backup> =
+            serde_json::from_str(&backups_str).map_err(BackupError::SerdeError)?;
 
         Ok(Self { backups })
     }
@@ -64,19 +70,19 @@ impl Backups {
     /// Add new backup item
     pub fn push(&mut self, backup: Backup) {
         if self.backups.len() == MAX_BACKUPS_LENGTH {
-            self.backups.remove(0);
+            self.backups.pop_back();
         }
 
-        self.push(backup);
+        self.backups.push_back(backup);
     }
 
     /// Get latest backup, if any
     pub fn latest(&self) -> Option<&Backup> {
-        self.backups.last()
+        self.backups.back()
     }
 
     /// Write backups to disk
-    pub async fn flush_to_disk(self) -> CookieClickerResult<()> {
+    pub async fn flush_to_disk(self) -> BackupResult<()> {
         let data_path = env::var("PERSISTENT_DATA_PATH").expect("Missing env PERSISTENT_DATA_PATH");
 
         // Append backup as JSON to file
@@ -86,14 +92,14 @@ impl Backups {
             .append(true)
             .open(data_path)
             .await
-            .map_err(CookieClickerError::IoError)?;
+            .map_err(BackupError::IoError)?;
 
         let backups_json =
-            serde_json::to_string(&self.backups).map_err(CookieClickerError::SerdeError)? + "\n";
+            serde_json::to_string(&self.backups).map_err(BackupError::SerdeError)? + "\n";
 
         file.write_all(backups_json.as_bytes())
             .await
-            .map_err(CookieClickerError::IoError)?;
+            .map_err(BackupError::IoError)?;
 
         Ok(())
     }

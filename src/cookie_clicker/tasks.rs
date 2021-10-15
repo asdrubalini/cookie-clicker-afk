@@ -22,10 +22,7 @@ impl CookieClickerTasks {
 
     /// Start tasks
     pub async fn start(self) {
-        {
-            let cookie_clicker = self.cookie_clicker.clone();
-            tokio::spawn(async move { Self::backup_save_code_task(cookie_clicker).await });
-        }
+        tokio::spawn(async move { Self::backup_save_code_task(self.cookie_clicker).await });
     }
 
     /// Perform save code backup once in a while

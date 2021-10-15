@@ -10,7 +10,7 @@ mod tasks;
 pub use tasks::{ConcurrentCookieClicker, CookieClickerTasks};
 
 mod backup;
-pub use backup::{Backup, Backups};
+pub use backup::{Backup, BackupError, Backups};
 
 type Driver = GenericWebDriver<ReqwestDriverAsync>;
 
@@ -28,6 +28,7 @@ pub enum CookieClickerError {
     SerdeError(serde_json::Error),
     ParseFloat(ParseFloatError),
     DriverNotStarted,
+    BackupError(BackupError),
 }
 
 pub type CookieClickerResult<T> = Result<T, CookieClickerError>;
@@ -84,14 +85,19 @@ impl CookieClicker {
         self.driver.is_some()
     }
 
-    /// Retrieve backup code and save on disk for later use
+    /// Retrieve save code and store on disk for later use
     pub async fn backup_save_code(&mut self) -> CookieClickerResult<()> {
-        let mut backups = Backups::from_disk().await?;
+        let mut backups = Backups::from_disk()
+            .await
+            .map_err(CookieClickerError::BackupError)?;
 
         let backup = Backup::new(self.get_save_code().await?);
         backups.push(backup);
 
-        backups.flush_to_disk().await?;
+        backups
+            .flush_to_disk()
+            .await
+            .map_err(CookieClickerError::BackupError)?;
 
         Ok(())
     }

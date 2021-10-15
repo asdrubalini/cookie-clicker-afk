@@ -7,14 +7,14 @@ use crate::cookie_clicker::{Backups, CookieClickerError};
 use super::CommandData;
 
 #[derive(Debug)]
-pub enum MessageHandlerError {
+pub enum CommandHandlerError {
     TelegramError(telegram_bot::Error),
     CookieClicker(CookieClickerError),
     InvalidCommand,
     InstanceNotStarted,
 }
 
-type CommandHandlerResult = Result<(), MessageHandlerError>;
+type CommandHandlerResult = Result<(), CommandHandlerError>;
 
 pub async fn handle_commands(command_data: CommandData) -> CommandHandlerResult {
     let message = command_data.message;
@@ -23,7 +23,7 @@ pub async fn handle_commands(command_data: CommandData) -> CommandHandlerResult 
         let (command, additional_data) = message.split_at(
             message
                 .find(' ')
-                .ok_or(MessageHandlerError::InvalidCommand)?,
+                .ok_or(CommandHandlerError::InvalidCommand)?,
         );
 
         (
@@ -48,7 +48,7 @@ pub async fn handle_commands(command_data: CommandData) -> CommandHandlerResult 
         "/screenshot" => command_screenshot(command_data).await,
         "/details" => command_details(command_data).await,
         "/stop" => command_stop(command_data).await,
-        _ => Err(MessageHandlerError::InvalidCommand),
+        _ => Err(CommandHandlerError::InvalidCommand),
     }
 }
 
@@ -62,20 +62,20 @@ async fn command_start(command_data: CommandData) -> CommandHandlerResult {
             "Starting a new browser session...",
         ))
         .await
-        .map_err(MessageHandlerError::TelegramError)?;
+        .map_err(CommandHandlerError::TelegramError)?;
 
     // Start game
     cookie_clicker
         .start(command_data.message)
         .await
-        .map_err(MessageHandlerError::CookieClicker)?;
+        .map_err(CommandHandlerError::CookieClicker)?;
 
     command_data.api.send(SendMessage::new(
             command_data.chat_id,
             "Browser started! Use /screenshot to get a screenshot of the current session or /status to get the status",
         ))
         .await
-        .map_err(MessageHandlerError::TelegramError)?;
+        .map_err(CommandHandlerError::TelegramError)?;
 
     Ok(())
 }
@@ -85,11 +85,12 @@ async fn command_resume(command_data: CommandData) -> CommandHandlerResult {
 
     let backups = Backups::from_disk()
         .await
-        .map_err(MessageHandlerError::CookieClicker)?;
+        .map_err(CookieClickerError::BackupError)
+        .map_err(CommandHandlerError::CookieClicker)?;
 
     let save_code = backups
         .latest()
-        .ok_or(MessageHandlerError::CookieClicker(
+        .ok_or(CommandHandlerError::CookieClicker(
             CookieClickerError::SaveCodeNotFound,
         ))?
         .save_code
@@ -102,20 +103,20 @@ async fn command_resume(command_data: CommandData) -> CommandHandlerResult {
             "Starting a new browser session...",
         ))
         .await
-        .map_err(MessageHandlerError::TelegramError)?;
+        .map_err(CommandHandlerError::TelegramError)?;
 
     // Start game
     cookie_clicker
         .start(save_code)
         .await
-        .map_err(MessageHandlerError::CookieClicker)?;
+        .map_err(CommandHandlerError::CookieClicker)?;
 
     command_data.api.send(SendMessage::new(
             command_data.chat_id,
             "Browser started! Use /screenshot to get a screenshot of the current session or /details to get details",
         ))
         .await
-        .map_err(MessageHandlerError::TelegramError)?;
+        .map_err(CommandHandlerError::TelegramError)?;
 
     Ok(())
 }
@@ -124,7 +125,7 @@ async fn command_screenshot(command_data: CommandData) -> CommandHandlerResult {
     let mut cookie_clicker = command_data.cookie_clicker.lock().await;
 
     if !cookie_clicker.is_started() {
-        return Err(MessageHandlerError::InstanceNotStarted);
+        return Err(CommandHandlerError::InstanceNotStarted);
     }
 
     command_data
@@ -134,13 +135,13 @@ async fn command_screenshot(command_data: CommandData) -> CommandHandlerResult {
             "Taking screenshot...",
         ))
         .await
-        .map_err(MessageHandlerError::TelegramError)?;
+        .map_err(CommandHandlerError::TelegramError)?;
 
     let screenshot = Bytes::from(
         cookie_clicker
             .take_screenshot()
             .await
-            .map_err(MessageHandlerError::CookieClicker)?,
+            .map_err(CommandHandlerError::CookieClicker)?,
     );
     let screenshot_file = InputFileUpload::with_data(screenshot, "screenshot.png");
 
@@ -148,7 +149,7 @@ async fn command_screenshot(command_data: CommandData) -> CommandHandlerResult {
         .api
         .send(SendPhoto::new(command_data.chat_id, screenshot_file))
         .await
-        .map_err(MessageHandlerError::TelegramError)?;
+        .map_err(CommandHandlerError::TelegramError)?;
 
     Ok(())
 }
@@ -157,30 +158,30 @@ async fn command_details(command_data: CommandData) -> CommandHandlerResult {
     let mut cookie_clicker = command_data.cookie_clicker.lock().await;
 
     if !cookie_clicker.is_started() {
-        return Err(MessageHandlerError::InstanceNotStarted);
+        return Err(CommandHandlerError::InstanceNotStarted);
     }
 
     let cookies_count = cookie_clicker
         .get_cookies_count()
         .await
-        .map_err(MessageHandlerError::CookieClicker)?;
+        .map_err(CommandHandlerError::CookieClicker)?;
 
     let cookies_count_beautified = cookie_clicker
         .beautify_cookies(cookies_count)
         .await
-        .map_err(MessageHandlerError::CookieClicker)?;
+        .map_err(CommandHandlerError::CookieClicker)?;
 
     let cookies_per_hour = cookie_clicker
         .get_cookies_per_second()
         .await
-        .map_err(MessageHandlerError::CookieClicker)?
+        .map_err(CommandHandlerError::CookieClicker)?
         * 60.0
         * 60.0;
 
     let cookies_per_hour_beautified = cookie_clicker
         .beautify_cookies(cookies_per_hour)
         .await
-        .map_err(MessageHandlerError::CookieClicker)?;
+        .map_err(CommandHandlerError::CookieClicker)?;
 
     let message = format!(
         "You have {} cookies and currently producing {} cookies per hour",
@@ -191,7 +192,7 @@ async fn command_details(command_data: CommandData) -> CommandHandlerResult {
         .api
         .send(SendMessage::new(command_data.chat_id, message))
         .await
-        .map_err(MessageHandlerError::TelegramError)?;
+        .map_err(CommandHandlerError::TelegramError)?;
 
     Ok(())
 }
@@ -200,13 +201,13 @@ async fn command_stop(command_data: CommandData) -> CommandHandlerResult {
     let mut cookie_clicker = command_data.cookie_clicker.lock().await;
 
     if !cookie_clicker.is_started() {
-        return Err(MessageHandlerError::InstanceNotStarted);
+        return Err(CommandHandlerError::InstanceNotStarted);
     }
 
     let save_code = cookie_clicker
         .get_save_code()
         .await
-        .map_err(MessageHandlerError::CookieClicker)?;
+        .map_err(CommandHandlerError::CookieClicker)?;
 
     let first_message = SendMessage::new(
         command_data.chat_id,
@@ -221,18 +222,18 @@ async fn command_stop(command_data: CommandData) -> CommandHandlerResult {
         .api
         .send(first_message)
         .await
-        .map_err(MessageHandlerError::TelegramError)?;
+        .map_err(CommandHandlerError::TelegramError)?;
 
     command_data
         .api
         .send(second_message)
         .await
-        .map_err(MessageHandlerError::TelegramError)?;
+        .map_err(CommandHandlerError::TelegramError)?;
 
     cookie_clicker
         .exit()
         .await
-        .map_err(MessageHandlerError::CookieClicker)?;
+        .map_err(CommandHandlerError::CookieClicker)?;
 
     Ok(())
 }
