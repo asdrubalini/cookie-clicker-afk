@@ -72,7 +72,7 @@ async fn command_start(command_data: CommandData) -> CommandHandlerResult {
 
     command_data.api.send(SendMessage::new(
             command_data.chat_id,
-            "Browser started! Use /screenshot to get a screenshot of the current session or /status to get the status",
+            "Browser started! Use /screenshot to get a screenshot of the current session or /details to get details",
         ))
         .await
         .map_err(CommandHandlerError::TelegramError)?;
