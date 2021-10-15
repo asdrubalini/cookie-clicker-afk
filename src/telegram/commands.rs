@@ -45,7 +45,7 @@ pub async fn handle_commands(command_data: CommandData) -> CommandHandlerResult 
     match command.as_str() {
         "/start" => command_start(command_data).await,
         "/screenshot" => command_screenshot(command_data).await,
-        "/status" => command_status(command_data).await,
+        "/details" => command_details(command_data).await,
         "/stop" => command_stop(command_data).await,
         _ => Err(MessageHandlerError::InvalidCommand),
     }
@@ -112,7 +112,7 @@ async fn command_screenshot(command_data: CommandData) -> CommandHandlerResult {
     Ok(())
 }
 
-async fn command_status(command_data: CommandData) -> CommandHandlerResult {
+async fn command_details(command_data: CommandData) -> CommandHandlerResult {
     let mut cookie_clicker = command_data.cookie_clicker.lock().await;
 
     if !cookie_clicker.is_started() {
