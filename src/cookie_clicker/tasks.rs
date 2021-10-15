@@ -7,8 +7,7 @@ use super::CookieClicker;
 
 pub type ConcurrentCookieClicker = Arc<Mutex<CookieClicker>>;
 
-const BACKUP_TASK_WAIT_SECONDS: u64 = 5 * 60;
-const STATISTICS_TASK_WAIT_SECONDS: u64 = 10 * 60;
+const BACKUP_TASK_WAIT_SECONDS: u64 = 30 * 60;
 
 pub struct CookieClickerTasks {
     cookie_clicker: ConcurrentCookieClicker,

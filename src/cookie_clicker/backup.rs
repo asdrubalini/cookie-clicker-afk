@@ -5,9 +5,10 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
+use log::info;
 use serde::{Deserialize, Serialize};
 use tokio::{
-    fs::OpenOptions,
+    fs::{File, OpenOptions},
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
@@ -38,7 +39,7 @@ impl Backup {
 }
 
 pub struct Backups {
-    backups: VecDeque<Backup>,
+    pub backups: VecDeque<Backup>,
 }
 
 impl Backups {
@@ -49,18 +50,14 @@ impl Backups {
         data_path.push("saves.json");
 
         if !Path::new(&data_path).exists() {
+            info!("Path does not exist");
             return Ok(Self {
                 backups: VecDeque::with_capacity(MAX_BACKUPS_LENGTH),
             });
         }
 
-        // Append backup as JSON to file
-        let mut file = OpenOptions::new()
-            .write(false)
-            .create(false)
-            .open(data_path)
-            .await
-            .map_err(BackupError::IoError)?;
+        // Read JSON from file
+        let mut file = File::open(data_path).await.map_err(BackupError::IoError)?;
 
         let mut backups_str = String::new();
         file.read_to_string(&mut backups_str)
@@ -93,17 +90,15 @@ impl Backups {
         let mut data_path = PathBuf::from(data_path);
         data_path.push("saves.json");
 
-        // Append backup as JSON to file
+        // Write to file
         let mut file = OpenOptions::new()
-            .write(true)
             .create(true)
-            .append(true)
+            .write(true)
             .open(data_path)
             .await
             .map_err(BackupError::IoError)?;
 
-        let backups_json =
-            serde_json::to_string(&self.backups).map_err(BackupError::SerdeError)? + "\n";
+        let backups_json = serde_json::to_string(&self.backups).map_err(BackupError::SerdeError)?;
 
         file.write_all(backups_json.as_bytes())
             .await
