@@ -1,4 +1,8 @@
-use std::{collections::VecDeque, env, path::Path};
+use std::{
+    collections::VecDeque,
+    env,
+    path::{Path, PathBuf},
+};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -41,6 +45,8 @@ impl Backups {
     /// Load backups from disk
     pub async fn from_disk() -> BackupResult<Self> {
         let data_path = env::var("PERSISTENT_DATA_PATH").expect("Missing env PERSISTENT_DATA_PATH");
+        let mut data_path = PathBuf::from(data_path);
+        data_path.push("saves.json");
 
         if !Path::new(&data_path).exists() {
             return Ok(Self {
@@ -84,6 +90,8 @@ impl Backups {
     /// Write backups to disk
     pub async fn flush_to_disk(self) -> BackupResult<()> {
         let data_path = env::var("PERSISTENT_DATA_PATH").expect("Missing env PERSISTENT_DATA_PATH");
+        let mut data_path = PathBuf::from(data_path);
+        data_path.push("saves.json");
 
         // Append backup as JSON to file
         let mut file = OpenOptions::new()
