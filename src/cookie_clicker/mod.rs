@@ -1,6 +1,6 @@
 use std::{env, num::ParseFloatError};
 
-use log::info;
+use log::{info, trace};
 use thirtyfour::{
     error::WebDriverError, http::reqwest_async::ReqwestDriverAsync, prelude::ElementWaitable, By,
     DesiredCapabilities, GenericWebDriver, WebDriver, WebDriverCommands,
@@ -59,13 +59,13 @@ impl CookieClicker {
 
         let driver_url = env::var("DRIVER_URL").expect("Missing env DRIVER_URL");
 
-        info!("Connecting to {}", driver_url);
+        trace!("Connecting to {}", driver_url);
 
         let driver = WebDriver::new(&driver_url, &caps)
             .await
             .map_err(CookieClickerError::DriverError)?;
 
-        info!("Connected");
+        trace!("Connected");
 
         self.driver = Some(driver);
 
@@ -114,14 +114,14 @@ impl CookieClicker {
             initial_save
         );
 
-        info!("Loading save code...");
+        trace!("Loading save code...");
 
         driver
             .execute_script(&save_script)
             .await
             .map_err(CookieClickerError::DriverError)?;
 
-        info!("Save code loaded");
+        trace!("Save code loaded");
 
         Ok(())
     }
@@ -164,11 +164,30 @@ impl CookieClicker {
         Ok(())
     }
 
+    /// Hide some stuff from gui
+    async fn prepare_gui(&mut self) -> CookieClickerResult<()> {
+        let driver = self.driver()?;
+
+        let prepare_script = r#"
+            document.getElementById('smallSupport').style.display = 'none';
+            document.getElementById('topBar').style.display = 'none';
+            document.getElementById('game').style.top = '0px';
+            document.getElementsByClassName('cc_banner')[0].style.display = 'none';
+        "#;
+
+        driver
+            .execute_script(prepare_script)
+            .await
+            .map_err(CookieClickerError::DriverError)?;
+
+        Ok(())
+    }
+
     /// Navigate to the beta page of the game
     async fn load_beta(&mut self) -> CookieClickerResult<()> {
         let driver = self.driver()?;
 
-        info!("Loading beta...");
+        trace!("Loading beta...");
 
         driver
             .get(COOKIE_CLICKER_BETA_URL)
@@ -177,7 +196,9 @@ impl CookieClicker {
 
         self.wait_page_load().await?;
 
-        info!("Loaded");
+        trace!("Loaded");
+
+        self.prepare_gui().await?;
 
         Ok(())
     }
