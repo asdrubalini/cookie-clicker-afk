@@ -10,7 +10,7 @@ mod tasks;
 pub use tasks::{ConcurrentCookieClicker, CookieClickerTasks};
 
 mod backup;
-pub use backup::CookieClickerBackup;
+pub use backup::{Backup, Backups};
 
 type Driver = GenericWebDriver<ReqwestDriverAsync>;
 
@@ -86,8 +86,12 @@ impl CookieClicker {
 
     /// Retrieve backup code and save on disk for later use
     pub async fn backup_save_code(&mut self) -> CookieClickerResult<()> {
-        let backup = CookieClickerBackup::new(self.get_save_code().await?);
-        backup.write().await?;
+        let mut backups = Backups::from_disk().await?;
+
+        let backup = Backup::new(self.get_save_code().await?);
+        backups.push(backup);
+
+        backups.flush_to_disk().await?;
 
         Ok(())
     }

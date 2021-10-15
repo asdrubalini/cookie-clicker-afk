@@ -2,7 +2,7 @@ use bytes::Bytes;
 use log::info;
 use telegram_bot::{InputFileUpload, SendMessage, SendPhoto};
 
-use crate::cookie_clicker::CookieClickerError;
+use crate::cookie_clicker::{Backups, CookieClickerError};
 
 use super::CommandData;
 
@@ -44,6 +44,7 @@ pub async fn handle_commands(command_data: CommandData) -> CommandHandlerResult 
 
     match command.as_str() {
         "/start" => command_start(command_data).await,
+        "/resume" => command_resume(command_data).await,
         "/screenshot" => command_screenshot(command_data).await,
         "/details" => command_details(command_data).await,
         "/stop" => command_stop(command_data).await,
@@ -72,6 +73,46 @@ async fn command_start(command_data: CommandData) -> CommandHandlerResult {
     command_data.api.send(SendMessage::new(
             command_data.chat_id,
             "Browser started! Use /screenshot to get a screenshot of the current session or /status to get the status",
+        ))
+        .await
+        .map_err(MessageHandlerError::TelegramError)?;
+
+    Ok(())
+}
+
+async fn command_resume(command_data: CommandData) -> CommandHandlerResult {
+    let mut cookie_clicker = command_data.cookie_clicker.lock().await;
+
+    let backups = Backups::from_disk()
+        .await
+        .map_err(MessageHandlerError::CookieClicker)?;
+
+    let save_code = backups
+        .latest()
+        .ok_or(MessageHandlerError::CookieClicker(
+            CookieClickerError::SaveCodeNotFound,
+        ))?
+        .save_code
+        .to_string();
+
+    command_data
+        .api
+        .send(SendMessage::new(
+            command_data.chat_id,
+            "Starting a new browser session...",
+        ))
+        .await
+        .map_err(MessageHandlerError::TelegramError)?;
+
+    // Start game
+    cookie_clicker
+        .start(save_code)
+        .await
+        .map_err(MessageHandlerError::CookieClicker)?;
+
+    command_data.api.send(SendMessage::new(
+            command_data.chat_id,
+            "Browser started! Use /screenshot to get a screenshot of the current session or /details to get details",
         ))
         .await
         .map_err(MessageHandlerError::TelegramError)?;
