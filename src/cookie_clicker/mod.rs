@@ -17,6 +17,7 @@ type Driver = GenericWebDriver<ReqwestDriverAsync>;
 #[derive(Debug)]
 pub struct CookieClicker {
     driver: Option<Driver>,
+    pub backups: Backups,
 }
 
 #[derive(Debug)]
@@ -25,7 +26,6 @@ pub enum CookieClickerError {
     SaveCodeNotFound,
     CookieCountNotFound,
     IoError(tokio::io::Error),
-    SerdeError(serde_json::Error),
     ParseFloat(ParseFloatError),
     DriverNotStarted,
     BackupError(BackupError),
@@ -37,8 +37,13 @@ const COOKIE_CLICKER_BETA_URL: &str = "https://orteil.dashnet.org/cookieclicker/
 
 impl CookieClicker {
     /// Create a new `CookieClicker` object
-    pub fn new() -> Self {
-        Self { driver: None }
+    pub fn new() -> CookieClickerResult<Self> {
+        let backups = Backups::new().map_err(CookieClickerError::BackupError)?;
+
+        Ok(Self {
+            driver: None,
+            backups,
+        })
     }
 
     /// Start the actual cookie clicker session
@@ -87,16 +92,9 @@ impl CookieClicker {
 
     /// Retrieve save code and store on disk for later use
     pub async fn backup_save_code(&mut self) -> CookieClickerResult<()> {
-        let mut backups = Backups::from_disk()
-            .await
-            .map_err(CookieClickerError::BackupError)?;
-
         let backup = Backup::new(self.get_save_code().await?);
-        backups.push(backup);
-
-        backups
-            .flush_to_disk()
-            .await
+        self.backups
+            .add(backup)
             .map_err(CookieClickerError::BackupError)?;
 
         Ok(())

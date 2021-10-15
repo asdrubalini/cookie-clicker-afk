@@ -62,7 +62,9 @@ fn is_user_admin(message: &Message) -> bool {
 
 /// Main event handler loop
 pub async fn handle_events(api: &Api) {
-    let cookie_clicker: ConcurrentCookieClicker = Arc::new(Mutex::new(CookieClicker::new()));
+    let cookie_clicker: ConcurrentCookieClicker = Arc::new(Mutex::new(
+        CookieClicker::new().expect("Cannot create CookieClicker instance"),
+    ));
 
     {
         // Start async jobs

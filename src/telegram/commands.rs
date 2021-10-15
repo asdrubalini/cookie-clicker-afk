@@ -2,7 +2,7 @@ use bytes::Bytes;
 use log::info;
 use telegram_bot::{InputFileUpload, SendDocument, SendMessage};
 
-use crate::cookie_clicker::{Backups, CookieClickerError};
+use crate::cookie_clicker::CookieClickerError;
 
 use super::CommandData;
 
@@ -13,6 +13,7 @@ pub enum CommandHandlerError {
     InvalidCommand,
     InstanceNotStarted,
     InstanceAlreadyStarted,
+    NoBackupsFound,
 }
 
 type CommandHandlerResult = Result<(), CommandHandlerError>;
@@ -93,14 +94,16 @@ async fn command_resume(command_data: CommandData) -> CommandHandlerResult {
         return Err(CommandHandlerError::InstanceAlreadyStarted);
     }
 
-    let backups = Backups::from_disk()
-        .await
+    let backup = cookie_clicker
+        .backups
+        .latest_backup()
         .map_err(CookieClickerError::BackupError)
         .map_err(CommandHandlerError::CookieClicker)?;
 
-    let backup = backups.latest().ok_or(CommandHandlerError::CookieClicker(
-        CookieClickerError::SaveCodeNotFound,
-    ))?;
+    let backup = match backup {
+        Some(backup) => backup,
+        None => return Err(CommandHandlerError::NoBackupsFound),
+    };
 
     let save_code = backup.save_code.to_owned();
 
