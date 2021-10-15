@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use log::info;
-use telegram_bot::{InputFileUpload, SendMessage, SendPhoto};
+use telegram_bot::{InputFileUpload, SendDocument, SendMessage};
 
 use crate::cookie_clicker::{Backups, CookieClickerError};
 
@@ -12,6 +12,7 @@ pub enum CommandHandlerError {
     CookieClicker(CookieClickerError),
     InvalidCommand,
     InstanceNotStarted,
+    InstanceAlreadyStarted,
 }
 
 type CommandHandlerResult = Result<(), CommandHandlerError>;
@@ -56,6 +57,10 @@ pub async fn handle_commands(command_data: CommandData) -> CommandHandlerResult 
 async fn command_start(command_data: CommandData) -> CommandHandlerResult {
     let mut cookie_clicker = command_data.cookie_clicker.lock().await;
 
+    if cookie_clicker.is_started() {
+        return Err(CommandHandlerError::InstanceAlreadyStarted);
+    }
+
     command_data
         .api
         .send(SendMessage::new(
@@ -83,6 +88,10 @@ async fn command_start(command_data: CommandData) -> CommandHandlerResult {
 
 async fn command_resume(command_data: CommandData) -> CommandHandlerResult {
     let mut cookie_clicker = command_data.cookie_clicker.lock().await;
+
+    if cookie_clicker.is_started() {
+        return Err(CommandHandlerError::InstanceAlreadyStarted);
+    }
 
     let backups = Backups::from_disk()
         .await
@@ -148,7 +157,7 @@ async fn command_screenshot(command_data: CommandData) -> CommandHandlerResult {
 
     command_data
         .api
-        .send(SendPhoto::new(command_data.chat_id, screenshot_file))
+        .send(SendDocument::new(command_data.chat_id, screenshot_file))
         .await
         .map_err(CommandHandlerError::TelegramError)?;
 
