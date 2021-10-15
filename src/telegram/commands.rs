@@ -47,6 +47,7 @@ pub async fn handle_commands(command_data: CommandData) -> CommandHandlerResult 
         "/resume" => command_resume(command_data).await,
         "/screenshot" => command_screenshot(command_data).await,
         "/details" => command_details(command_data).await,
+        "/backup" => command_backup(command_data).await,
         "/stop" => command_stop(command_data).await,
         _ => Err(CommandHandlerError::InvalidCommand),
     }
@@ -191,6 +192,33 @@ async fn command_details(command_data: CommandData) -> CommandHandlerResult {
     command_data
         .api
         .send(SendMessage::new(command_data.chat_id, message))
+        .await
+        .map_err(CommandHandlerError::TelegramError)?;
+
+    Ok(())
+}
+
+async fn command_backup(command_data: CommandData) -> CommandHandlerResult {
+    let mut cookie_clicker = command_data.cookie_clicker.lock().await;
+
+    if !cookie_clicker.is_started() {
+        return Err(CommandHandlerError::InstanceNotStarted);
+    }
+
+    command_data
+        .api
+        .send(SendMessage::new(command_data.chat_id, "Starting backup..."))
+        .await
+        .map_err(CommandHandlerError::TelegramError)?;
+
+    cookie_clicker
+        .backup_save_code()
+        .await
+        .map_err(CommandHandlerError::CookieClicker)?;
+
+    command_data
+        .api
+        .send(SendMessage::new(command_data.chat_id, "Backup complete"))
         .await
         .map_err(CommandHandlerError::TelegramError)?;
 
