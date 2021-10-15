@@ -88,20 +88,20 @@ async fn command_resume(command_data: CommandData) -> CommandHandlerResult {
         .map_err(CookieClickerError::BackupError)
         .map_err(CommandHandlerError::CookieClicker)?;
 
-    let save_code = backups
-        .latest()
-        .ok_or(CommandHandlerError::CookieClicker(
-            CookieClickerError::SaveCodeNotFound,
-        ))?
-        .save_code
-        .to_string();
+    let backup = backups.latest().ok_or(CommandHandlerError::CookieClicker(
+        CookieClickerError::SaveCodeNotFound,
+    ))?;
+
+    let save_code = backup.save_code.to_owned();
+
+    let message = format!(
+        "Starting a new browser session with backup taken at {}",
+        backup.saved_at()
+    );
 
     command_data
         .api
-        .send(SendMessage::new(
-            command_data.chat_id,
-            "Starting a new browser session...",
-        ))
+        .send(SendMessage::new(command_data.chat_id, message))
         .await
         .map_err(CommandHandlerError::TelegramError)?;
 

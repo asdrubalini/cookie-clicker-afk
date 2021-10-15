@@ -5,6 +5,7 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
+use chrono_tz::Tz;
 use log::info;
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -22,7 +23,7 @@ pub enum BackupError {
 
 pub type BackupResult<T> = Result<T, BackupError>;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Backup {
     saved_at: DateTime<Utc>,
     pub save_code: String,
@@ -35,6 +36,16 @@ impl Backup {
             saved_at: Utc::now(),
             save_code,
         }
+    }
+
+    pub fn saved_at(&self) -> String {
+        let timezone: Tz = env::var("TIMEZONE")
+            .expect("Missing env TIMEZONE")
+            .parse()
+            .expect("Invalid env TIMEZONE");
+
+        let saved_at = self.saved_at.with_timezone(&timezone);
+        format!("{:?}", saved_at)
     }
 }
 
