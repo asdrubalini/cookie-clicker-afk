@@ -1,8 +1,9 @@
 use std::{env, sync::Arc};
 
+use async_trait::async_trait;
 use futures::StreamExt;
 use log::{error, info, warn};
-use telegram_bot::{Api, ChatId, Message, MessageKind, SendMessage, UserId};
+use telegram_bot::{Api, ChatId, Document, GetFile, Message, MessageKind, SendMessage, UserId};
 use tokio::sync::Mutex;
 
 use crate::cookie_clicker::{ConcurrentCookieClicker, CookieClicker, CookieClickerTasks};
@@ -60,6 +61,42 @@ fn is_user_admin(message: &Message) -> bool {
     message.from.id == admin_id
 }
 
+#[derive(Debug)]
+enum DocumentContentsToStringError {
+    TelegramError(telegram_bot::Error),
+    CannotGetFileUrl,
+    ReqwestError(reqwest::Error),
+}
+
+#[async_trait]
+trait DocumentContentsToString {
+    async fn to_string(&self, api: &Api) -> Result<String, DocumentContentsToStringError>;
+}
+
+#[async_trait]
+impl DocumentContentsToString for Document {
+    async fn to_string(&self, api: &Api) -> Result<String, DocumentContentsToStringError> {
+        let file = api
+            .send(GetFile::new(self))
+            .await
+            .map_err(DocumentContentsToStringError::TelegramError)?;
+
+        let token = env::var("TELEGRAM_BOT_TOKEN").expect("Missing env TELEGRAM_BOT_TOKEN");
+        let file_url = file
+            .get_url(&token)
+            .ok_or(DocumentContentsToStringError::CannotGetFileUrl)?;
+
+        let body = reqwest::get(file_url)
+            .await
+            .map_err(DocumentContentsToStringError::ReqwestError)?
+            .text()
+            .await
+            .map_err(DocumentContentsToStringError::ReqwestError)?;
+
+        Ok(body)
+    }
+}
+
 /// Main event handler loop
 pub async fn handle_events(api: &Api) {
     let cookie_clicker: ConcurrentCookieClicker = Arc::new(Mutex::new(
@@ -91,14 +128,27 @@ pub async fn handle_events(api: &Api) {
                 continue;
             }
 
-            if let MessageKind::Text { data, .. } = message.kind {
-                let api = api.clone();
-                let chat_id = message.chat.id();
-                let cookie_clicker = cookie_clicker.clone();
+            let message_text = if let MessageKind::Text { data, .. } = message.kind {
+                data
+            } else if let MessageKind::Document { data, .. } = message.kind {
+                // Parse Document text as /start argument
+                match data.to_string(&api).await {
+                    Ok(token) => format!("/start {}", token),
+                    Err(error) => {
+                        println!("Error while retrieving file: {:?}", error);
+                        continue;
+                    }
+                }
+            } else {
+                continue;
+            };
 
-                let command_data = CommandData::new(api.clone(), chat_id, cookie_clicker, data);
-                command_task(api, command_data, chat_id).await;
-            }
+            let api = api.clone();
+            let chat_id = message.chat.id();
+            let cookie_clicker = cookie_clicker.clone();
+
+            let command_data = CommandData::new(api.clone(), chat_id, cookie_clicker, message_text);
+            command_task(api, command_data, chat_id).await;
         }
     }
 }
