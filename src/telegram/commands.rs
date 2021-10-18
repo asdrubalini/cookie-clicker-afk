@@ -249,24 +249,22 @@ async fn command_stop(command_data: CommandData) -> CommandHandlerResult {
         .await
         .map_err(CommandHandlerError::CookieClicker)?;
 
-    let first_message = SendMessage::new(
+    let message = SendMessage::new(
         command_data.chat_id,
         "Browser successfully stopped. Here is your code:",
     );
 
-    let mut second_message =
-        SendMessage::new(command_data.chat_id, format!("<pre>{}</pre>", save_code));
-    second_message.parse_mode(telegram_bot::ParseMode::Html);
-
     command_data
         .api
-        .send(first_message)
+        .send(message)
         .await
         .map_err(CommandHandlerError::TelegramError)?;
 
+    let save_file = InputFileUpload::with_data(save_code, "CookieClickerSave.txt");
+
     command_data
         .api
-        .send(second_message)
+        .send(SendDocument::new(command_data.chat_id, save_file))
         .await
         .map_err(CommandHandlerError::TelegramError)?;
 
