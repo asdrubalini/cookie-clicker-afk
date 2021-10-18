@@ -18,7 +18,7 @@ pub enum CommandHandlerError {
 
 type CommandHandlerResult = Result<(), CommandHandlerError>;
 
-pub async fn handle_commands(command_data: CommandData) -> CommandHandlerResult {
+pub async fn handle_command(command_data: CommandData) -> CommandHandlerResult {
     let message = command_data.message;
 
     let (command, additional_data) = if message.contains(' ') {

@@ -34,7 +34,7 @@ impl CommandData {
 
 async fn command_task(api: Api, command_data: CommandData, chat_id: ChatId) {
     tokio::spawn(async move {
-        match commands::handle_commands(command_data).await {
+        match commands::handle_command(command_data).await {
             Ok(_) => (),
             Err(error) => {
                 error!("Error: {:?}", error);
