@@ -3,7 +3,9 @@ use std::{env, sync::Arc};
 use async_trait::async_trait;
 use futures::StreamExt;
 use log::{error, info, warn};
-use telegram_bot::{Api, ChatId, Document, GetFile, Message, MessageKind, SendMessage, UserId};
+use telegram_bot::{
+    Api, ChatId, Document, GetFile, Message, MessageKind, MessageOrChannelPost, SendMessage, UserId,
+};
 use tokio::sync::Mutex;
 
 use crate::cookie_clicker::{ConcurrentCookieClicker, CookieClicker, CookieClickerTasks};
@@ -49,16 +51,28 @@ async fn command_task(api: Api, command_data: CommandData, chat_id: ChatId) {
     });
 }
 
-/// Validates user identity from message
-fn is_user_admin(message: &Message) -> bool {
-    let admin_id = UserId::from(
+/// Get admin user id from env
+fn get_admin_id() -> UserId {
+    UserId::from(
         env::var("TELEGRAM_ADMIN_ID")
             .expect("Missing env TELEGRAM_ADMIN_ID")
             .parse::<i64>()
             .expect("Invalid TELEGRAM_ADMIN_ID"),
-    );
+    )
+}
 
-    message.from.id == admin_id
+async fn send_admin_message<M: AsRef<str>>(
+    api: &Api,
+    message: M,
+) -> Result<MessageOrChannelPost, telegram_bot::Error> {
+    let admin_chat: ChatId = get_admin_id().into();
+    api.send(SendMessage::new(admin_chat, message.as_ref()))
+        .await
+}
+
+/// Validates user identity from message
+fn is_user_admin(message: &Message) -> bool {
+    message.from.id == get_admin_id()
 }
 
 #[derive(Debug)]
@@ -103,6 +117,10 @@ pub async fn handle_events(api: &Api) {
         CookieClicker::new().expect("Cannot create CookieClicker instance"),
     ));
 
+    send_admin_message(api, "Warning: the bot has just started")
+        .await
+        .unwrap();
+
     {
         // Start async jobs
         let cookie_clicker = cookie_clicker.clone();
@@ -125,6 +143,11 @@ pub async fn handle_events(api: &Api) {
         if let telegram_bot::UpdateKind::Message(message) = update.kind {
             if !is_user_admin(&message) {
                 warn!("Some user tried to access the bot");
+
+                send_admin_message(api, "Warning: some user tried to access this bot")
+                    .await
+                    .unwrap();
+
                 continue;
             }
 
