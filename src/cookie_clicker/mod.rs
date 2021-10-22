@@ -233,7 +233,7 @@ impl CookieClicker {
         let driver = self.driver()?;
 
         let cookies_count = driver
-            .execute_script("return Game.unbuffedCps")
+            .execute_script("return Game.cookiesPs * (1 - Game.cpsSucked)")
             .await
             .map_err(CookieClickerError::DriverError)?
             .value()
