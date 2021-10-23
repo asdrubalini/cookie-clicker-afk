@@ -3,3 +3,4 @@ chromedriver
 workspace.code-workspace
 .vscode/
 .env
+*.tar
