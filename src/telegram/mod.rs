@@ -144,9 +144,13 @@ pub async fn handle_events(api: &Api) {
             if !is_user_admin(&message) {
                 warn!("Some user tried to access the bot");
 
-                send_admin_message(api, "Warning: some user tried to access this bot")
-                    .await
-                    .unwrap();
+                let details = format!(
+                    "Warning: some user has tried to access this bot: username: @{}, user_id: {}",
+                    message.from.username.unwrap_or("(no username)".to_string()),
+                    message.from.id
+                );
+
+                send_admin_message(api, details).await.unwrap();
 
                 continue;
             }
