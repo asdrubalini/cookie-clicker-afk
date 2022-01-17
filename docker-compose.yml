@@ -2,7 +2,7 @@ version: "3"
 
 services:
     webdriver:
-        image: selenium/standalone-chrome:4.0.0-20211013
+        image: selenium/standalone-chrome:4.1.1-20211217
         shm_size: 2gb
         ports:
             - 4444:4444
@@ -11,7 +11,7 @@ services:
         environment:
             - SE_NODE_SESSION_TIMEOUT=86400
         restart: unless-stopped
-    
+
     worker:
         image: cookie-clicker-afk-worker
         networks:
@@ -27,5 +27,6 @@ services:
 networks:
     cookie-clicker-afk:
 
+        null
 volumes:
-    worker-data:
+    worker-data: null
