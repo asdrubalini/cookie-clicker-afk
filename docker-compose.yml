@@ -2,7 +2,7 @@ version: "3"
 
 services:
     webdriver:
-        image: selenium/standalone-chrome:4.1.1-20211217
+        image: selenium/standalone-chrome:4.8.1
         shm_size: 2gb
         ports:
             - 4444:4444
@@ -26,7 +26,7 @@ services:
 
 networks:
     cookie-clicker-afk:
-
         null
+
 volumes:
     worker-data: null

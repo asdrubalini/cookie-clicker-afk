@@ -1,19 +1,19 @@
 [package]
 name = "cookie-clicker-afk"
-version = "0.1.0"
+version = "0.0.0"
 edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = [ "full" ] }
-thirtyfour = { version = "0.27", default-features = false, features = [ "tokio-runtime", "reqwest-rustls-tls" ] }
+thirtyfour = { version = "0.31", default-features = false, features = [ "tokio-runtime", "reqwest-rustls-tls" ] }
 chrono = "0.4"
-chrono-tz = "0.6"
+chrono-tz = "0.8"
 dotenv = "0.15"
 telegram-bot = { version = "0.9", git = "https://github.com/telegram-rs/telegram-bot", default-features = false, features = [ "rustls" ] }
 futures = "0.3"
 bytes = "1.1"
 log = "0.4"
 pretty_env_logger = "0.4"
-rusqlite = { version = "0.26", features = [ "bundled", "chrono" ] }
+rusqlite = { version = "0.28", features = [ "bundled", "chrono" ] }
 async-trait = "0.1"
 reqwest = { version = "0.11", default-features = false, features = [ "gzip", "rustls-tls" ] }
