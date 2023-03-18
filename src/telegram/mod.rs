@@ -154,7 +154,7 @@ pub async fn handle_events(api: &Api) {
                 data
             } else if let MessageKind::Document { data, .. } = message.kind {
                 // Parse Document text as /start argument
-                match data.to_string(&api).await {
+                match data.to_string(api).await {
                     Ok(token) => format!("/start {}", token),
                     Err(error) => {
                         println!("Error while retrieving file: {:?}", error);

@@ -2,8 +2,8 @@ use std::{env, num::ParseFloatError};
 
 use log::{info, trace};
 use thirtyfour::{
-    error::WebDriverError, http::reqwest_async::ReqwestDriverAsync, prelude::ElementWaitable, By,
-    DesiredCapabilities, GenericWebDriver, WebDriver, WebDriverCommands,
+    error::WebDriverError, By,
+    DesiredCapabilities, WebDriver, prelude::ElementWaitable
 };
 
 mod tasks;
@@ -12,11 +12,8 @@ pub use tasks::{ConcurrentCookieClicker, CookieClickerTasks};
 mod backup;
 pub use backup::{Backup, BackupError, Backups};
 
-type Driver = GenericWebDriver<ReqwestDriverAsync>;
-
-#[derive(Debug)]
 pub struct CookieClicker {
-    driver: Option<Driver>,
+    driver: Option<WebDriver>,
     pub backups: Backups,
 }
 
@@ -66,7 +63,7 @@ impl CookieClicker {
 
         trace!("Connecting to {}", driver_url);
 
-        let driver = WebDriver::new(&driver_url, &caps)
+        let driver = WebDriver::new(&driver_url, caps)
             .await
             .map_err(CookieClickerError::DriverError)?;
 
@@ -78,7 +75,7 @@ impl CookieClicker {
     }
 
     /// Get driver instance or fail if it is not initialized
-    pub fn driver(&self) -> CookieClickerResult<&Driver> {
+    pub fn driver(&self) -> CookieClickerResult<&WebDriver> {
         if self.driver.is_none() {
             Err(CookieClickerError::DriverNotStarted)
         } else {
@@ -115,7 +112,7 @@ impl CookieClicker {
         trace!("Loading save code...");
 
         driver
-            .execute_script(&save_script)
+            .execute(&save_script, vec![])
             .await
             .map_err(CookieClickerError::DriverError)?;
 
@@ -128,10 +125,10 @@ impl CookieClicker {
         let driver = self.driver()?;
 
         let save_code = driver
-            .execute_script("return Game.localStorageGet(Game.SaveTo);")
+            .execute("return Game.localStorageGet(Game.SaveTo);", vec![])
             .await
             .map_err(CookieClickerError::DriverError)?
-            .value()
+            .json()
             .as_str()
             .ok_or(CookieClickerError::SaveCodeNotFound)?
             .to_string();
@@ -144,16 +141,16 @@ impl CookieClicker {
         let driver = self.driver()?;
 
         while !driver
-            .execute_script("return document.readyState")
+            .execute("return document.readyState", vec![])
             .await
             .map_err(CookieClickerError::DriverError)?
-            .value()
+            .json()
             .to_string()
             .contains("complete")
         {}
 
         let big_cookie = driver
-            .find_element(By::Id("bigCookie"))
+            .find(By::Id("bigCookie"))
             .await
             .map_err(CookieClickerError::DriverError)?;
 
@@ -174,7 +171,7 @@ impl CookieClicker {
         "#;
 
         driver
-            .execute_script(prepare_script)
+            .execute(prepare_script, vec![])
             .await
             .map_err(CookieClickerError::DriverError)?;
 
@@ -188,7 +185,7 @@ impl CookieClicker {
         trace!("Loading beta...");
 
         driver
-            .get(COOKIE_CLICKER_BETA_URL)
+            .goto(COOKIE_CLICKER_BETA_URL)
             .await
             .map_err(CookieClickerError::DriverError)?;
 
@@ -218,10 +215,10 @@ impl CookieClicker {
         let driver = self.driver()?;
 
         let cookies_count = driver
-            .execute_script("return Game.cookies")
+            .execute("return Game.cookies", vec![])
             .await
             .map_err(CookieClickerError::DriverError)?
-            .value()
+            .json()
             .as_f64()
             .ok_or(CookieClickerError::CookieCountNotFound)?;
 
@@ -233,10 +230,10 @@ impl CookieClicker {
         let driver = self.driver()?;
 
         let cookies_count = driver
-            .execute_script("return Game.cookiesPs * (1 - Game.cpsSucked)")
+            .execute("return Game.cookiesPs * (1 - Game.cpsSucked)", vec![])
             .await
             .map_err(CookieClickerError::DriverError)?
-            .value()
+            .json()
             .as_f64()
             .ok_or(CookieClickerError::CookieCountNotFound)?;
 
@@ -249,10 +246,10 @@ impl CookieClicker {
         let script = format!("return Beautify({})", cookies);
 
         let cookies_count = driver
-            .execute_script(&script)
+            .execute(&script, vec![])
             .await
             .map_err(CookieClickerError::DriverError)?
-            .value()
+            .json()
             .as_str()
             .ok_or(CookieClickerError::CookieCountNotFound)?
             .to_string();

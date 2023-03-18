@@ -6,27 +6,6 @@ services:
         shm_size: 2gb
         ports:
             - 4444:4444
-        networks:
-            - cookie-clicker-afk
         environment:
             - SE_NODE_SESSION_TIMEOUT=86400
         restart: unless-stopped
-
-    worker:
-        image: cookie-clicker-afk-worker
-        networks:
-            - cookie-clicker-afk
-        depends_on:
-            - webdriver
-        env_file:
-            - .env
-        volumes:
-            - worker-data:/app/
-        restart: unless-stopped
-
-networks:
-    cookie-clicker-afk:
-        null
-
-volumes:
-    worker-data: null

@@ -78,7 +78,7 @@ impl Backups {
     }
 
     pub fn latest_backup(&mut self) -> BackupResult<Option<Backup>> {
-        Ok(self
+        self
             .connection
             .query_row(include_str!("./sql/get_latest_backup.sql"), [], |row| {
                 Ok(Backup {
@@ -87,6 +87,6 @@ impl Backups {
                 })
             })
             .optional()
-            .map_err(BackupError::RusqliteError)?)
+            .map_err(BackupError::RusqliteError)
     }
 }

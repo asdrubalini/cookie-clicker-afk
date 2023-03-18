@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = [ "full" ] }
-thirtyfour = { version = "0.31", default-features = false, features = [ "tokio-runtime", "reqwest-rustls-tls" ] }
+thirtyfour = { version = "0.31", default-features = false, features = [ "rusttls-tls" ] }
 chrono = "0.4"
 chrono-tz = "0.8"
 dotenv = "0.15"
